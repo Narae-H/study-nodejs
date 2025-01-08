@@ -608,12 +608,15 @@ nodemon을 매번 직접 실행하지 않고, NPM 스크립트로 설정
 <br/>
 <br/>
 
-# 서버와 클라이언트 간 통신
+# 클라이언트와 서버 간 통신
+<img src="https://github.com/Narae-H/study-nodejs/blob/main/asset/readme/client_server_communication.png?raw=true" width="500px" alt="클라이언트와 서버 간 통신"><br/>
+<br/>
+
 ## 라우팅
 서버에서 특정 `URL`과 `HTTP Method`에 따라 요청을 처리하는 방법.
 
 ### Node.js에서의 라우팅 설정
-`Express`와 `method-override` 라이브러리를 사용하여 라우팅 설정 가능
+`Express`와 `method-override` middleware를 사용하여 라우팅 설정 가능
  - [app.get()](#appget): 데이터 조회
  - [app.post()](#apppost): 데이터 생성
  - [app.put()](#appput): 데이터 전체 수정
@@ -621,15 +624,11 @@ nodemon을 매번 직접 실행하지 않고, NPM 스크립트로 설정
  - [app.app.delete()](#appdelete): 데이터 삭제
 <br/>
 
-## 클라이언트 요청형식
-클라이언트가 서버로 요청을 보낼 때는 정해진 형식에 맞춰서 요청(Request)해야 서버가 응답(Response)해줌. 
-- [HTTP URL](#http-url) (*Required*)
-- [HTTP Method](#http-method) (*Required*)
-- [HTTP Header](#http-header) (*Optional*)
-
-### HTTP URL
-- <프로토콜>://<호스트>:<포트>/<경로>?<쿼리스트링>
-- REST 서비스의 경우 서버는 일반적으로 URL을 사용하여 리소스를 식별하고 수행
+## 클라이언트 요청(HTTP Request)
+클라이언트가 서버로 요청을 보낼 때는 정해진 형식에 맞춰서 요청(Request)을 해야하는데, HTTP Request는 아래와 같이 크게 3개 부분으로 나누어져 있음:
+- Start line: [HTTP Method](#http-method), [HTTP URL](#http-url), HTTP version
+- Header: [HTTP Header](#http-header)
+- Body: Request가 전송하는 데이터를 담고 있는 부분 
 
 ### HTTP Method
 |<center>HTTP Method</center>|<center>설명</center>|<center>[CRUD](#crud) 동작</center>|
@@ -661,6 +660,10 @@ nodemon을 매번 직접 실행하지 않고, NPM 스크립트로 설정
 > | <center>**설명**</center>      | 전체 리소스가 업데이트되므로 `누락된 필드는 null 또는 초기값` 삽입 | `전체 리소스를 업데이트`하며 누락된 필드 없음. | `일부 필드만 업데이트`하며 기존 리소스 유지.|
 > 
 > </details>
+
+### HTTP URL
+- <프로토콜>://<호스트>:<포트>/<경로>?<쿼리스트링>
+- REST 서비스의 경우 서버는 일반적으로 URL을 사용하여 리소스를 식별하고 수행
 
 ### HTTP Header
 - 데이터: POST, PUT 및 기타 HTTP 메서드가 성공적으로 작동하기 위한 데이터
@@ -699,7 +702,7 @@ nodemon을 매번 직접 실행하지 않고, NPM 스크립트로 설정
 | `500 Internal Server Error` | 서버 내부 오류              | 코드 에러 또는 서버 문제        |
 <br/>
 
-## 디자인 원칙: `RESTful API`
+## `RESTful API` 디자인
 `REST`(Representational State Transfer)의 형식을 잘 따르는 API로 좋은 API하는 디자인 원칙 중 하나.
   - REST의 형식:
     - HTTP URI를 통해 자원을 명시하고,
