@@ -7,7 +7,7 @@ const { MongoClient, ObjectId } = require('mongodb');
 // 1-2. Create an Express instance
 const app = express();
 
-// 1-3. Set middleware
+// 1-3. Set global middleware
 app.use(express.static(__dirname + '/public')); // Static folders
 app.use(express.json());                        // req.body
 app.use(express.urlencoded({extended:true}));   // req.body
@@ -18,7 +18,7 @@ app.set('view engine', 'ejs');                  // EJS
 
 // 2. DB connection
 let db
-const url = 'mongodb+srv://admin:qwer1234@cluster0.tuq6e.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'
+const url = 'mongodb+srv://@cluster0.tuq6e.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'
 new MongoClient(url).connect().then((client)=>{
   console.log('Successfully DB connected')
   db = client.db('forum')
