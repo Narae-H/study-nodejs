@@ -13,356 +13,317 @@
 - CPU가 많이 사용되는 작업(이미지변환, 동영상압축 등)은 관련라이브러리도 적고 single thread라 성능도 좋지 않아서 무거운 작업보다는 가벼운 작업 여러개에 더 적합.
 <br/>
 
-## 설치 및 개발환경 셋팅
-### 1. Node.js 접속
-[Node.js 다운로드](https://nodejs.org/en/download/current) 페이지 접속
+## 설치 및 개발환경 설정
+### 1. VS Code 설치
+1. [Visual Studio Code](https://code.visualstudio.com/download) 다운로드
+2. 설치
 
-### 2. 다운로드 및 설치
-페이지 중간쯤에 OS 종류 맞춰서 Installer 다운로드하고 설치 ex) Windows Installer (.msi)
+### 2. Node.js 설치 및 작업 폴더 생성
+1. [Node.js](https://nodejs.org/en/download/current) 다운로드 및 설치
+2. 작업용 폴더 생성 및 VS Code에서 열기
+3. Node.js 프로젝트 초기화   
+    ```sh
+    # package.json 파일 자동 생성 및 기본값을 사용하여 프로젝트 정보 초기화
+    npm init -y 
+    ```
+4. 작업용 폴더 안에 `server.js` 생성
 
-### 3. VS Code 에디터 설치
-[Visual Studio Code](https://code.visualstudio.com/download) 다운로드 및 설치
+### 3. 그 외 필요한 라이브러리 및 모듈 설치
+- 라이브러리 및 모듈   
 
-### 4. 작업용 폴더 생성 및 VS Code에서 열기
+|**라이브러리** |**필수/선택**        | **사용 이유**                     | **설치 방법(터미널)**             |
+|-------------|--------------------|----------------------------------|--------------------------------|
+| [`Express`](#express)|<center>필수</center>| 웹 애플리케이션 서버 구축을 위한 라이브러리 | npm install express       |
+| [`MongoDB`](#mongodb)|<center>필수</center>| 데이터베이스 저장소                      | npm install mongodb@5     |
+| [`EJS`](#ejs)|<center>필수</center>| 동적으로 HTML 템플릿을 렌더링하여 데이터 바인딩 | npm install ejs       |
+| [`method-override`](#method-override)|<center>필수</center>|  |       |
+| [`nodemon`](#nodemon)|<center>선택</center>| 코드 수정시 서버 재시작 없이 반영 | npm install -g nodemon            |
+| [`TypeScript`](#typescript)|<center>선택</center>| 타입지정하여 코드 안정성 제공     | npm install typescript --save-dev |
 
-### 5. 프로젝트 생성
-1. VS Code에서 터미널 오픈(`` Ctrl + ` ``)
-2. `package.json` 생성
-```sh
-npm init -y
+
+### 4. 최초 `server.js` 코드 셋팅
+```js
+// 1. Settings
+// 1-1. Import modules
+const express = require('express');
+const { MongoClient, ObjectId } = require('mongodb'); // ObjectId: DB에서 자동 생성되는 id는 ObjectId 타입이므로 id 검색 시 ObjectId 객체 생성 필요
+const methodOverride = require('method-override')
+
+// 1-2. Create an Express instance
+const app = express();
+
+// 1-3. Set middleware
+app.use(express.static(__dirname + '/public')); // Static folders
+app.use(express.json());                        // 클라이언트에서 데이터 보내면, req.body로 쉽게 꺼내쓰게 하기
+app.use(express.urlencoded({extended:true}));   // application/x-www-form-urlencoded data
+app.use(methodOverride('_method'));             // override HTTP method
+
+// 1-4. Set view engine
+app.set('view engine', 'ejs'); 
+
+// 1-5. DB connection
+let db
+const url = 'mongodb+srv://[username]:[password]@cluster0.tuq6e.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'
+new MongoClient(url).connect().then((client)=>{
+  console.log('Successfully DB connected');
+  db = client.db('forum');
+  
+  // run a server
+  app.listen(8080, () => {
+      console.log('http://localhost:8080 is running...')
+  });
+}).catch((err)=>{
+  console.log(err);
+});
+
+
+// 2. Routing
+app.get('/', (req, res) => {
+  res.send("The server is set!");
+}); 
+
 ```
-3. `Express` 라이브러리 설치
+
+### 5. 서버 실행
+```sh
+# nodejs만 설치되어 있을 경우:
+node server.js 
+
+## nodemon 설치한 경우:
+nodemon server.js
+```
+
+<br/>
+<br/>
+
+# Express
+Node.js에서 Express는 가장 인기 있는 웹 서버 라이브러리 중 하나로, 많은 개발자들이 Express를 사용하여 REST API를 만들거나 웹 애플리케이션을 구축. 
+
+## 설치 및 설정
+### 설치
 ```sh
 npm install express
 ```
 
-4. 내가 만든 작업용 폴더 안에 `node_modules` 폴더 생성되었는지 확인
-5.  `server.js` 파일 생성
-```js
-// 1. express 라이브러리 사용하겠다고 알려줌.
-const express = require('express')
-const app = express()
-
-// 2. app.listen([포트넘버], () =>{}): 서버 실행
-app.listen(8080, () => {
-    console.log('http://localhost:8080 에서 서버 실행중')
-})
-
-// 3. app.get([주소], ([요청], [응답])=>{ 보여줄것 }): [주소]로 들어오면, 무언가 보여줘라.
-// 여기서는 '/'(메인페이지)로 들어오면 '반갑다'라고 보여줘라.
-app.get('/', (요청, 응답) => {
-  응답.send('반갑다')
-}) 
-```
-
-6. 서버 실행
-```sh
-node server.js
-```
-7. 서버 실행 확인: [http://localhost:8080](http://localhost:8080)
-<br/>
-
-> <details>
->
-> <summary>소스코드 수정될때마다 실행하기 귀찮으면? => `nodemon` 설치</summary>
-> 
-> ```sh
-> # nodemon 설치
-> npm install -g nodemon
->
-> # 서버 실행
-> nodemon server.js
-> ```
-> </details>
-<br/>
-<br/>
-
-# 라우팅
-서버에서 데이터를 보낼 경로를 선택하는 과정. 즉, `URI` 따라서 여러가지 페이지 만듬.
-
-## 사용법
-`app.get('/news', () => {}) `: get() 메소드를 이용하여 페이지 라우팅 가능하게 해줌.  
-  1. 누가 `/news` 접속 시 `app.get()` 실행
-  2. app.get( )안에 있는 `콜백함수`(( )=>{ }) 실행 (콜백함수는 순서가 보장됨)
-
-### 1. 글씨만 보여주기
-```js
-// 1. express 라이브러리 사용
-const express = require('express')
-const app = express()
-
-// 2. 서버 실행
-app.listen(8080, () => {
-    console.log('http://localhost:8080 에서 서버 실행중')
-})
-
-// 3. URI 셋팅
-// 3-1) '/'(메인페이지)로 들어오면 '반갑다'라고 보여줘라.
-app.get('/', (요청, 응답) => {
-  응답.send('반갑다')
-}) 
-// 3-2) '/news'로 들어오면 '오늘 비옴'이라고 보여줘라.
-app.get('/news', (요청, 응답) => {
-  응답.send('오늘비옴')
-}) 
-```
-<br/>
-
-### 2. HTML 페이지 보여주기
-1. `index.html`페이지 만들기
-2. `! + tab` : 기본 템플릿 생성
-3. 코드 작성
-  ```html
-  <!-- index.html -->
-
-  <body>
-    <h2>Hi</h2>
-  </body>
-  ```
-
-  ```js
-  /** server.js*/
-
-  // 1. express 라이브러리 사용
-  const express = require('express')
-  const app = express()
-
-  // 2. 서버 실행
-  app.listen(8080, () => {
-      console.log('http://localhost:8080 에서 서버 실행중')
-  })
-
-  // 3. URI 셋팅
-  // 3-1) '/'(메인페이지)로 들어오면 'index.html'페이지를 보여줘라.
-  // __dirname: 현재 server.js 파일의 절대경로
-    app.get('/', (요청, 응답) => {
-      응답.sendFile(__dirname + '/index.html')
-    }) 
-  // 3-2) '/news'로 들어오면 '오늘 비옴'이라고 보여줘라.
-  app.get('/news', (요청, 응답) => {
-    응답.send('오늘비옴')
-  }) 
-  ```
-4. 서버 재실행
-5. 서버 실행 확인: [http://localhost:8080](http://localhost:8080)
-<br/>
-
-### 3. Static 파일(CSS 파일) 넣어보기
-1. `public` 폴더 생성
-2. `main.css` 파일 생성
-3. 생성한 public 폴더를 `server.js`에 등록: `app.use(express.static( ))`
+### 설정
 ```js
 /** server.js */
 
-// 1. express 라이브러리 사용
-const express = require('express')
-const app = express()
+// express 모듈 불러오기
+const express = require('express');
 
-// 2. static 폴더 등록
-app.use(express.static(__dirname + '/public'));
-
-// 3. 서버 실행
-app.listen(8080, () => {
-    console.log('http://localhost:8080 에서 서버 실행중')
-})
-
-// 4. URI 셋팅
-app.get('/', (요청, 응답) => {
-  응답.send('반갑다')
-}) 
-``` 
-
-4. html 파일에서 css파일 첨부 및 코드작성
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- index.html -->
-  <!-- public 폴더를 등록해놨으면 "public" 명시할 필요 없음 -->
-  <link href="/main.css" rel="stylesheet">
-
-  <!-- 만약, public 밑에 하위폴더가 있고 그거 쓰려면? -->
-  <link href="/하위폴더/main.css" rel="stylesheet">
-
-  <title>Document</title>
-</head>
-
-<body>
-  <div class="nav">
-    <a class="logo">AppleForum</a>
-    <a>Page1</a>
-    <a>Page2</a>
-  </div> 
-</body>
+// express 애플리케이션 인스턴스 생성
+const app = express();
 ```
 
-5. css파일 코드 작성
-```css
-/* index.css */
-body {
-  margin: 0;
-}
-.nav {
-  display: flex;
-  padding: 15px;
-  align-items: center;
-  background : white;
-}
-.nav a {
-  margin-right: 10px;
-}
-.logo {
-  font-weight: bold;
-}
+## 주요 메소드
+### app.use()
+- 용도: 전체 어플리케이션에 걸쳐 공통적으로 실행되는 로직을 추가할 때 사용. 또한, 여러 개의 미들웨어를 체인처럼 설정할 수 있어 요청이 처리될 때 순차적으로 미들웨어들이 실행되고, 라우트 처리 전에 실행되는 중간 코드.<br/>
+<sup>- `미들웨어`: 요청(request)와 응답(response) 사이에서 특정 작업을 수행하는 함수들</sup>
+- 사용 예시:
+    ```js
+    // JSON 데이터를 자동으로 파싱
+    app.use(express.json()); 
+    ```
+
+### app.set()
+- 용도: 애플리케이션에서 뷰 엔진을 설정
+- 사용 예시:
+    ```js
+    // EJS를 뷰 엔진으로 설정. 
+    // res.render()를 통해 EJS 템플릿 파일을 랜더링하여 동적 HTML 콘텐츠 생성할 수 있게 해줌.
+    app.set('view engine', 'ejs');
+    ```
+
+### app.listen()
+- 용도: 포트를 지정하고 서버를 실행.
+- 사용 예시:
+    ```js
+    app.listen(8080, () => {
+      console.log('서버가 http://localhost:8080에서 실행 중입니다.');
+    });
+    ```
+
+### app.get()
+- 용도: `HTTP GET 요청`을 처리하는 라우트 핸들러.
+- 사용 예시:
+    ```js
+    // 1. 정확한 일치
+    app.get('/', (req, res) => {
+      res.send('GET 요청 처리');
+    });
+
+    //2. URL Parameter 사용
+    // 글 상세페이지처럼 같이 HTML 레이아웃을 공유하나 내용만 각기 다를 경우 URL Parameter 이용
+    app.get("/detail/:id", (res, req) => {
+      // URL Parameter 받아오기
+      let id = res.params.id; 
+
+      // URL 파라미터 따라서 동적으로 랜더링하기
+      req.render("detail.ejs", { content: "글번호는 " + id});
+    })
+    ```
+
+### app.post()
+- 용도: `HTTP POST 요청`을 처리하는 라우트 핸들러.
+- 사용 예시:
+    ```js
+    app.post('/submit', (req, res) => {
+      res.send('POST 요청 처리');
+    });
+    ```
+
+### app.put()
+- 용도: `HTTP PUT 요청`을 처리하는 라우트 핸들러로 사용하려면 [method-override](#설치-및-설정-3)설치 필요.
+- 사용 예시:
+    ```js
+    app.put('/update', (req, res) => {
+      res.send('PUT 요청 처리');
+    });
+    ```
+
+### app.patch()
+- 용도: 
+- 사용 예시:
+```js
 ```
+
+### app.delete()
+- 용도: 
+- 사용 예시:
+```js
+```
+
+### res.send()
+- 용도: 응답 본문을 클라이언트에 전송.
+- 사용 예시:
+    ```js
+    app.get('/', (req, res) => {
+      res.send('Hello, Express!');
+    });
+    ```
+
+### res.json()
+- 용도: JSON 형식으로 응답 본문을 클라이언트에 전송.
+- 사용 예시:
+    ```js
+    app.get('/data', (req, res) => {
+      res.json({ message: 'JSON 응답' });
+    });
+    ```
+
+### res.redirect()
+- 용도: 클라이언트를 다른 URL로 리디렉션.
+- 사용 예시:
+  ```js
+  app.get('/old', (req, res) => {
+    res.redirect('/new');
+  });
+  ```
+
+### res.status()
+- 용도: 응답 상태 코드를 설정.
+- 사용 예시:
+    ```js
+    app.get('/error', (req, res) => {
+      res.status(404).send('페이지를 찾을 수 없습니다.');
+    });
+    ```
 <br/>
 <br/>
 
-# MongoDB 호스팅 받고 셋팅하기
-## MongoDB란?
+# MongoDB
 비관계형(정규화가 필요없는) document 데이터베이스로 빠르게 데이터 입출력 가능.
 Collection을 만들고 그 안에 document를 만들어서 기록하는 형식. 자료 저장할때 JavaScript object자료형 그대로 저장 가능
 - MongoDB 구조
-
-<img src="/asset/readme/mongodb" width="500px" alt="mongodb"/><br/>
+<img src="https://github.com/Narae-H/study-nodejs/blob/main/asset/readme/mongodb.png?raw=true" width="500px" alt="mongodb"/><br/>
 <small>이미지 출처: [코딩애플](https://codingapple.com/)</small>
 
-## MongoDB 호스팅받기
-클라우드 호스팅으로 진행(직접 설치도 가능하나 호스팅 받는게 편하니깐). 가입만 하면 무료로 512MB 사용 가능.
-
-### 1. 회원가입
-[MongoDB 가입 페이지](https://account.mongodb.com/account/register) 에서 회원가입
-
-### 2. Cluster 생성
-1. 왼쪽 `DATABASE > Clusters` 선택 > `Build a Cluster`선택 
-2. 필요한 값 입력
-  - Cluster Type: M0 (Free Tier)
-  - Name: Cluster0
-  - Automate security setup: 선택
-  - Preload sample dataset: 선택안함
-  - Provider: AWS
-  - Region: Seoul(ap-northeast-2)
-3. Create Deployment
-4. Connect to Cluster0 페이지
-  - IP Address 확인
-  - Database username/password: admin/qwer1234
-
-### 3. DB 접속 가능한 IP 주소 설정 
-1. `Security > Network Access` 메뉴 이동
-2. `Add IP Address` 선택
-3. `Allow access from anywhere` 선택
-4. Confirm
-
-### 4. 데이터베이스 생성
-1. `Overview` 메뉴로 이동
-2. `Add data` 선택 > `Create Database on Atlas` 선택
-3. Database 설정
-  - Dataabse name: forum
-  - Collection name:post
-4. Create Database
-<br/>
-
-## MongoDB와 서버 연결
-### 1. 라이브러리 설치
+## 설치 및 설정
+### 설치
 ```sh
 npm install mongodb@5
 ```
 
-### 2. `server.js` 코드 작성
-1. DB 접속 URL 확인
-  - MongoDB 접속 > `Overview` 메뉴
-  - Clusters 밑에 `Connect` 버튼
-  - `Drivers` 선택
-2. `Add your connection string into your application code` 부분의 코드 복사. 이게 DB 접속 URL 임.
+### 설정
+**1. 회원가입**: [MongoDB 가입 페이지](https://account.mongodb.com/account/register) <br/>
 
-3. `server.js` 에 mongoDB 연결 위한 코드 작성
+**2. Cluster 생성**: 
+  - 왼쪽 `DATABASE > Clusters` 선택 > `Build a Cluster`선택 
+  - 필요한 값 입력:
+    - Cluster Type: M0 (Free Tier)
+    - Name: Cluster0
+    - Automate security setup: 선택
+    - Preload sample dataset: 선택안함
+    - Provider: AWS
+    - Region: Seoul(ap-northeast-2)
+  - Create Deployment
+  - Connect to Cluster0 페이지
+    - IP Address 확인
+    - Database username/password: admin/qwer1234 <br/>
+
+**3. DB 접속 가능한 IP 주소 설정** 
+  - `Security > Network Access` 메뉴 이동
+  - `Add IP Address` 선택
+  - `Allow access from anywhere` 선택
+  - Confirm <br/>
+
+**4. 데이터베이스 생성**
+  - `Overview` 메뉴로 이동
+  - `Add data` 선택 > `Create Database on Atlas` 선택
+  - Database 설정
+    - Dataabse name: forum
+    - Collection name:post
+  - Create Database <br/>
+
+**5. DB접속 URL 확인**
+  - DB 접속 URL 확인
+    - MongoDB 접속 > `Overview` 메뉴
+    - Clusters 밑에 `Connect` 버튼
+    - `Drivers` 선택
+  - `Add your connection string into your application code` 부분의 코드 복사. 이게 DB 접속 URL 임. <br/>
+
+**6. `server.js`코드작성**
 ```js
 /** server.js */
 
-// mongoDB 연결하기 위한 코드
+// 1. mongoDB 모듈 불러오기
 const { MongoClient } = require('mongodb')
 
-// 1. mongoDB에서 DB 접속 url 확인하고 넣기. [username]:[password]는 내가 데이터베이스 셋팅할때 입력한 것
-let db
+// 2. DB 접속 url 설정
+// [username]:[password]는 내가 데이터베이스 셋팅할때 입력한 것
 const url = 'mongodb+srv://[username]:[password]@cluster0.tuq6e.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'
 
-// DB 접속
+// 3. DB 접속
 new MongoClient(url).connect().then((client)=>{
-  // 성공시
-  console.log('DB연결성공')
-
-  // 2. DB 이름: forum
-  db = client.db('forum')
-  
-  // 3. DB 접속이 되야 서버에서 무언가 할 수 있으니 서버 실행 코드 여기다 두기
-  app.listen(8080, () => {
-      console.log('http://localhost:8080 에서 서버 실행중')
-  })
+  console.log("DB연결 성공");
 }).catch((err)=>{
-  // 에러날때
-  console.log(err)
-})
-
-```
-
-### 3. DB 입력테스트
-1. `server.js` 코드 수정
-```js
-/** server.js */ 
-
-app.get('/news', (요청, 응답) => {
-  // 데이터 입력
-  db.collection('post').insertOne({title: "어쩌구"})
+  console.log("DB연결 실패!");
 })
 ```
-
-2. DB 데이터 입력 확인
-- MongoDB 접속 > `Overview` 메뉴
-- `Browse Collections` 선택
-- `post` collection 선택하면 데이터 입력한 것 확인가능
+<br/> 
 <br/>
 
-## 테스트 데이터 입력
-1. MongoDB 접속 > `Overview` 메뉴
-2. `Browse Collections` 선택
-3. `Inert Document` 선택
-4. 내용 입력: id값을 자동으로 부여됨(물론 수정도 가능)
- - title: "첫 게시물"
- - content: "내용임1234"
-5. Insert
-<br/>
-
-> <details>
-> 
-> <summary> Q. document 1개에 데이터를 다 넣어도 되는가?</summary>
-> A: No!!! document는 1개의 데이터 row를 의미함. 한줄에 모든 데이터를 다 넣으면 데이터 관리(데이터를 찾고 수정하고 등)가 어려워짐.
-> 
-> </details>
-
-<br/>
-
-## DB 데이터 조회
-```js
-/** server .js */
-
-// '/list'로 접속하면 db의 post 컬렉션에 있는 모든 document를 보여줘라.
-app.get("/list", async (요청, 응답) => {
-  let result = await db.collection('post').find().toArray();
-  console.log(result);
-})
-```
-<br/>
+## 주요 메소드
+DB 작업은 시간이 걸리는 I/O 작업으로 `await`을 사용(에러 발생 가능성 줄이기).
+  ```js
+  // db 앞에 'await' 키워드를 붙이려면, 그걸 감싸고 있는 메소드 앞에 'async' 붙여야 함. 
+  // 'await'과 'async'는 세트
+  app.get("/list", async (req, res) => {
+    let result = await db.collection('post').find().toArray();
+    res.render('list.ejs', {글목록: result});
+  })
+  ```
 
 > <details>
 > 
 > <summary> <strong>await</strong> 이란?</summary>
 >
-> 다음줄 실행하기 전에 잠깐 기다리라는 뜻. JavaScript는 비동기처리를 하기 때문에 요청을 다 받고나서 실행속도가 느린(DB조회)보다 실행속도가 더 빠른 출력(console.log())을 먼저 처리하려고 함.
-> 그걸 막고 싶을때 쓸 수 있는게 `await` 또는 `콜백함수` 또는 `.then()`
-> MongoDB 라이브러리에서 `await` 키워드를 쓰라고 권장.
+> 해당 작업이 완료될 때까지 기다렸다가 다음 코드를 실행하라는 뜻. <br/>
+> JavaScript는 비동기처리를 하기 때문에, 요청을 수집하고 나서 실행속도가 느린(DB조회)보다 실행속도가 더 빠른 출력(console.log())을 먼저 처리하려고 함. <br/>
+> 그걸 막고 싶을때 쓸 수 있는게 `await` 또는 `콜백함수` 또는 `.then()`. <br/>
+> <br/>
+> MongoDB 라이브러리에서는 세개 중에 `await` 키워드를 쓰라고 권장.
 > ```js
 > // 1) await
 > app.get("/list", async (요청, 응답) => {
@@ -385,116 +346,166 @@ app.get("/list", async (요청, 응답) => {
 > })
 > ```
 > </details>
+
+### insertOne()
+- 용도: 하나의 document를 collection에 삽입
+- 사용 예시: 
+    ```js
+    db.collection('컬렉션명').insertOne({title: "어쩌구"})
+    ```
+
+### insertMany()
+- 용도: 여러 document를 한 번에 collection에 삽입
+- 사용 예시: 
+    ```js
+    ```
+
+### findOne()
+- 용도: 조건에 맞는 한개의 document를 조회
+- 사용 예시: 
+    ```js
+    // _id가 1234 인 document를 찾아라.
+    // MongoDB에서 자동생성되는 _id의 경우, ObjectId 객체이므로 타입 맞춰서 찾아야 함.
+    db.collection('컬렉션명').findOne({_id: new ObjectId(1234)})
+    ```
+
+### find()
+- 용도: 여러 collection에서 조건에 맞는 document를 조회
+- 사용 예시: 
+    ```js
+    db.collection('컬렉션명').find().toArray();
+    ```
+
+### updateOne()
+- 용도: 조건에 맞는 하나의 document를 업데이트
+- 사용 예시: 
+    ```js
+    // collection('컬렉션명').updateOne({찾을조건}, { $set: { 업데이트 할 document } })
+
+    // 업데이트 할 데이터 키: 
+    //    $set: 덮어써라
+    //    $inc: +/- 연산을 해라
+    //    $mul: 곱셈 연산을해라
+    //    $unset: 필드값을 삭제해라
+    db.collection('컬렉션명').updateOne({ name: 'Alice' }, { $set: { age: 26 } });
+    ```
+
+### updateMany()
+- 용도: 조건에 맞는 여러 개의 document를 업데이트
+- 사용 예시: 
+    ```js
+    // collection('컬렉션명').updateMany({찾을조건}, { $set: { 업데이트 할 document } })
+
+    // 검색 조건 키: 
+    // { like : { 조건문 } }
+    //    $gt: 오른쪽 값 초과
+    //    $gte: 오른쪽 값 이상
+    //    $lt: 오른쪽 값 미만
+    //    $lte: 오른쪽 값 이하
+    //    $ne: not equal
+    db.collection('컬렉션명').updateMany(
+      { title : '멍청아' },
+      { $set: { title : '착한친구야' } }
+    )
+    ```
+
+### replaceOne()
+- 용도: 조건에 맞는 한 개의 document를 완전히 교체
+- 사용 예시: 
+```js
+```
+
+### deleteOne()
+- 용도: 조건에 맞는 한 개의 document를 삭제
+- 사용 예시: 
+```js
+```
+
+### deleteMany()
+- 용도: 조건에 맞는 여러 개의 document를 삭제
+- 사용 예시: 
+```js
+```
+
+### countDocuments()
+- 용도: 조건에 맞는 document의 개수를 반환
+- 사용 예시: 
+```js
+```
+<br/>
 <br/>
 
-## 랜더링(EJS)
-DB에서 받아온 데이터를 브라우저에 이쁘게 보여주는 과정을 rendering이라고 함. 
-template engine 쓰면, 서버에서 받아온 데이터 html에 넣을 수 있는데 여기서는 template engine 중 `ejs` 쓸것임. 
+# EJS
+EJS는 Embedded JavaScript의 약자로, JavaScript와 HTML을 결합하여 `동적인 HTML 페이지를 생성할 수 있는 템플릿 엔진`. Express에서는 EJS 템플릿 파일을 렌더링하여 동적으로 HTML 콘텐츠를 생성가능.
 - 서버사이드 랜더링: HTML을 서버측에서 데이터채워서 완성해서 유저에게 보여주는형식 ex) node.js
 - 클라이언트 사이드 랜더링: 텅비어있는 html과 데이터만 유저에게 보내고 html 내용은 JavaScript로 유저 브라우저에서 생성 ex) react
 
-### 1. EJS 설치
+## 설치 및 설정
+### 설치
 ```sh
 npm install ejs
 ```
-<br/>
 
-### 2. EJS 사용하는걸 node.js에 알려줌
-```js
-// server.js
+### 설정
+EJS는 Express와 함께 사용 됨.
+1. `server.js` 코드  
+    ```js
+    /** server.js */
 
-app.set('view engine', 'ejs');
-```
-<br/>
+    // 1. Express 불러오기
+    const express = require('express');
+    const app = express();
 
-### 3. 랜더링
-html 파일 안에 데이터를 꽂아넣고 싶으면 `.ejs` 파일을 만들어서 거기에 데이터를 꽂아넣으면 그걸 자동으로 html로 변환해줌.   
-.ejs 파일은 `HTML 파일과 문법은 동일`하고, `views 폴더 밑`에 생성. 
+    // 2. EJS를 뷰 엔진으로 설정
+    app.set('view engine', 'ejs');
 
-- list.ejs
+    // 3. static 폴더 등록
+    // public 폴더는 static resource(image, css, js 등)가 위치해있는 폴더
+    // HTML에서 '/public' 명시하지 않고 바로 사용가능: <link href="/style.css" rel="stylesheet"> 
+    app.use(express.static(__dirname + '/public')); 
+
+    // 4. 라우트
+    app.get("/write", (req, res) => {
+      res.render('write.ejs');
+    });
+    ```
+
+2. EJS 폴더 구조: `public`, `views` 폴더 생성 <br/>
+    project/ <br/>
+    ├── public/ <br/>
+    │   ├── css/ <br/>
+    │   │   └── style.css <br/>
+    │   └── js/ <br/>
+    │       └── script.js <br/>
+    ├── views/ <br/>
+    │   └── index.ejs <br/>
+    └── server.js <br/>
+
+## 주요 문법
+### 데이터 출력 변수 (`<%= %>`)
 ```html
-<!-- list.ejs -->
-<body class="grey-bg">
-
-  <div class="white-bg">
-    <div class="list-box">
-      <h4>글제목임</h4>
-      <p>글내용임</p>
-    </div>
-    <div class="list-box">
-      <h4>글제목임</h4>
-      <p>글내용임</p>
-    </div>
-  </div> 
-
-</body>
+<!-- name이라는 변수를 HTML로 출력 -->
+<p>Hello, <%= name %>!</p>
 ```
 
-- css 
-```css
-/* main.css */
-
-.grey-bg {
-  background: #eee;
-}
-.white-bg {
-  background: white;
-  margin: 20px;
-  border-radius: 5px;
-}
-.list-box {
-  padding : 10px;
-  border-bottom: 1px solid#eee;
-}
-.list-box h4{
-  font-size: 16px;
-  margin: 5px;
-}
-.list-box p {
-  font-size: 13px;
-  margin: 5px;
-  color: grey;
-}
-```
-<br/>
-
-### 4. server.js 파일에서 .ejs 파일 셋팅
-어떤 URI로 접속 시에 ejs 파일 보여줄것인지 어떤 데이터를 보여줄지 알려주기.<br/>
-<small>참고: 응답은 1번만 갖다 쓸 수 있으므로 응답으로 여러개 쓴다면 최초의 한개만 실행되고 아래껀 실행안됨.</small>
-
-- 1. .ejs파일 랜더링 설정(`응답.render()`)
-```js
-// server.js
-app.get("/list", async (요청, 응답) => {
-  let result = await db.collection('post').find().toArray();
-  응답.render('list.ejs', {글목록: result}); 
-})
-```
-
-- 2. 가져다 쓰기(`<%= $>`)
+### JavaScript 실행 (`<% %>`)
 ```html
-<!-- list.ejs -->
-
-<body class="grey-bg">
-  <div class="white-bg">
-    <div class="list-box">
-      <h4><%= 글목록[0].title %></h4>
-      <p><%= 글목록[0].content %></p>
-    </div>
-    <div class="list-box">
-      <h4><%= 글목록[1].title %></h4>
-      <p><%= 글목록[1].content %></p>
-    </div>
-  </div>
-</body>
+<!-- .ejs 파일에서 JavaScript 문법 쓸 때 -->
+```html
+<% for (var i = 0; i < 3; i++){ %>
+  <h4>안뇽!</h4>
+<% } %> 
 ```
-<br/>
-<br/>
 
-# EJS 문법
-- `<%= %>`: .ejs에서 `데이터` 가져다 쓸 때
-- `<% %>`: .ejs에서 `JavaScript` 문법쓸 때
-- `<%- %>`: .ejs에서 JavaScript가 아닌 `특수한 문법` 쓸 때
+### HTML 이스케이프 없이 출력 (`<%- %>`)
+```html
+<!-- 반복되는 .ejs 파일 넣고 싶을 때 -->
+<%- include('nav.ejs') %>
+
+<!-- htmlContent: '<strong>This is bold text!</strong>' 로 server.js에서 설정해줬을 경우,  -->
+<!-- '<strong>This is bold text!</strong>'부분이 HTML 태그로 인식되어 볼드체로 보임 -->
+<p>Unescaped HTML: <%- htmlContent %></p>
+```
 <br/>
 
 > <details>
@@ -505,79 +516,227 @@ app.get("/list", async (요청, 응답) => {
 > `<%= %>` 사용하면 그 안에 들어있는게 html일지라도 랜더링 하지 않고 태그 그대로 문자로 나옴.
 > </details>
 <br/>
-
-## `<%= %>` (데이터)
-JavaScript 파일에서 `render()` 메소드로 데이터 보냈을 경우, `<%= %>` 써서 데이터 삽입 가능.
-
-```html
-<h4><%= 데이터이름 %></h4>
-```
 <br/>
 
-## 자바스크립트 문법(`<% %>`)
-.ejs 파일에서는 기존의 JavaScript 문법 그대로 사용가능. 단, `<% %>` 안에 넣어야 함.
+# method-override
+method-override는 HTML 폼에서 `PUT, PATCH, DELETE와 같은 HTTP 메소드를 사용할 수 있도록 도와주는 미들웨어` <br/>
+HTML \<form>는 기본적으로 GET과 POST만 지원하므로, 다른 HTTP 메소드를 사용하려면 method-override를 사용해야 함
 
-### 반복문
-```html
-<% for (var i = 0; i < 3; i++){ %>
-  <h4>안뇽</h4>
-<% } %> 
-```
-<br/>
-
-## include(`<%- %>`)
-.ejs 파일을 다른 .ejs 파일에 넣고 싶을 때. 다시 말해 여러 .ejs 파일에서 자주 사용하는 HTML 덩어리가 있으면 따로 .ejs 파일로 만들어놓고 .ejs 불러와서 쓰는 형식으로 코드 짜는것 가능.
-
-- nav.ejs (끼워넣고 싶은 HTML 덩어리)
-```html
-<!-- nav.ejs -->
-<div class="nav">
-  <a class="logo">AppleForum</a>
-  <a>Page1</a>
-  <a>Page2</a>
-</div> 
+## 설치 및 설정
+### 설치
+```sh
+npm install method-override
 ```
 
-- list.ejs (끼워 넣을 곳)
+### 설정
+```js
+// 1. Import modules
+const express = require('express');
+const methodOverride = require('method-override');
+
+// 2. Create an Express instance
+const app = express();
+
+// 3. Set middleware
+// HTTP 메서드 오버라이드를 위한 미들웨어. 웹 폼(form)에서 `_method`를 찾아서 HTTP Method 덮어씀.
+app.use(methodOverride('_method'));
+
+// application/x-www-form-urlencoded 형식의 데이터를 파싱. 이 데이터는 웹 폼(form)에서 보통 보내는 형식
+app.use(express.urlencoded({ extended: true }));
+
+// 4. Run a server
+app.listen(8080, () => {
+    console.log('Server is running on http://localhost:8080');
+});
+
+// 5. 라우팅
+// HTML form에서 method 오버라이드 했으므로 아래의 app.delete('/resources/:id', ()=>{}) 실행이 됨.
+app.delete('/resource/:id', (req, res) => {
+  const resourceId = req.params.id;
+  // Perform delete operation
+  res.send(`Resource with ID ${resourceId} deleted.`);
+});
+```
 ```html
-<!-- 
-1) 기본 
-  <%- include(`파일이름.ejs`) %>
-
-2) 데이터 전달하고 싶은 경우
-  <%- include(`파일이름.ejs`), {데이터: 123} %>  
--->
-
-<body class="grey-bg">
-  <%- include('nav.ejs') %>
-  
-  <div class="white-bg">
-    <% for(let i=0; i<글목록.length; i++) { %>
-      <div class="list-box">
-        <h4><%= 글목록[i].title %></h4>
-        <p><%= 글목록[i].content %></p>
-      </div>
-    <% } %> 
-  </div>
-</body>
+<!-- 아래와 같이 보내면 method가 POST인데도 불구하고 DELETE 요청이 됨. -->
+<form action="/resource/123?_method=DELETE" method="POST">
+  <button type="submit">Delete</button>
+</form>
 ```
 <br/>
 <br/>
 
-# 서버와 유저가 통신하는 법
+# nodemon
+Node.js 애플리케이션을 개발할 때 유용한 도구로, 파일이 변경되면 서버를 자동으로 재시작하므로 코드 수정될때마다 서버 재시작 불필요
 
-## RESTful API
-좋은 API하는 좋은 디자인 원칙
+### 설치
+```sh
+# nodemon 설치
+npm install -g nodemon
+```
 
-### 원칙 1
-유저가 서버에게 요청할 때.
+### 서버 실행
+```sh
+nodemon server.js
+```
 
-##  서버에 요청할 때
-### method
-- `GET`: 서버에게 데이터 달라고 할 때
-- `POST`: 서버에게 데이터 보내고 싶을 때
-- `UPDATE`, `PUT`: 서버에게 DB 수정요청할 때
-- `DELETE`: 서버에게 DB 삭제 요청할 때
+### `package.json`에 스크립트 설정
+nodemon을 매번 직접 실행하지 않고, NPM 스크립트로 설정
+- package.json   
+    ```js
+    "scripts": {
+      "start": "node server.js",
+      "dev": "nodemon server.js"
+    }
+    ```
+- 스크립트 실행
+    ```sh
+    npm run dev
+<br/>
+<br/>
+
+# TypeScript
+## 설치
+- 타입정의 설치
+    ```sh
+    npm install --save-dev @types/express
+    ```
+- TypeScript 설치
+    ```sh
+    npm install --save-dev typescript
+    ```
+<br/>
+<br/>
+
+# 서버와 클라이언트 간 통신
+## 라우팅
+서버에서 특정 `URL`과 `HTTP Method`에 따라 요청을 처리하는 방법.
+
+### Node.js에서의 라우팅 설정
+`Express`와 `method-override` 라이브러리를 사용하여 라우팅 설정 가능
+ - [app.get()](#appget): 데이터 조회
+ - [app.post()](#apppost): 데이터 생성
+ - [app.put()](#appput): 데이터 전체 수정
+ - [app.patch()](#apppatch): 데이터 일부 수정
+ - [app.app.delete()](#appdelete): 데이터 삭제
+<br/>
+
+## 클라이언트 요청형식
+클라이언트가 서버로 요청을 보낼 때는 정해진 형식에 맞춰서 요청(Request)해야 서버가 응답(Response)해줌. 
+- [HTTP URL](#http-url) (*Required*)
+- [HTTP Method](#http-method) (*Required*)
+- [HTTP Header](#http-header) (*Optional*)
+
+### HTTP URL
+- <프로토콜>://<호스트>:<포트>/<경로>?<쿼리스트링>
+- REST 서비스의 경우 서버는 일반적으로 URL을 사용하여 리소스를 식별하고 수행
+
+### HTTP Method
+|<center>HTTP Method</center>|<center>설명</center>|<center>[CRUD](#crud) 동작</center>|
+|-----------------|----------------------|--------------------|
+| `GET`           | 리소스 `조회`         | **R**EAD           |
+| `POST`          | 리소스 `생성`         | **C**REATE         |
+| `PUT`           | 리소스 전체 `수정`     | **U**PDATE         |
+| `PATCH`         | 리소스 일부 `수정`     | **U**PDATE         |
+| `DELETE`        | 리소스 `삭제`         | **D**ELETE         |
+| `HEAD`          |          |          |
+| `OPTIONS`       |          |          |
+| `TRACE`         |          |          |
+| `CONNECT`       |          |          |
+
+> <details>
+>
+> <summary><small>`PUT` VS `PATCH`</small></summary>
+>
+> `PUT`은 리소스 전체가 교체(만약 전체가 아닌 일부만 데이터를 전달한다면 전달한 필드 외 다른 데이터는 null/초기값 처리)
+> `PATCH`는 리소스의 일부만 교체.
+> <br/>
+>
+> - 원본 데이터: `{ "name": "김철수", "age": 18 }`
+> 
+> | <center>**항목**</center>      | <center>**`PUT`**(틀림)</center> | <center>**`PUT`**(맞음)</center> | <center>**`PATCH`**(맞음)</center> |
+> |-------------------------------|----------------------------------|---------------------------------|-----------------------------------|
+> | <center>**요청 JSON**</center> | { "age": 20 }                   | { "name": "김철수", "age": 20 } | { "age": 20 }                   |
+> | <center>**결과 JSON**</center> | { "name": null, "age": 20 }     | { "name": "김철수", "age": 20 } | { "name": "김철수", "age": 20 }  |
+> | <center>**설명**</center>      | 전체 리소스가 업데이트되므로 `누락된 필드는 null 또는 초기값` 삽입 | `전체 리소스를 업데이트`하며 누락된 필드 없음. | `일부 필드만 업데이트`하며 기존 리소스 유지.|
+> 
+> </details>
+
+### HTTP Header
+- 데이터: POST, PUT 및 기타 HTTP 메서드가 성공적으로 작동하기 위한 데이터
+- 파라미터: 수행하는 작업에 대한 추가적인 정보 ex) 클라이언트 인증을 위한 쿠키
+<br/>
+
+## 서버 요청 처리 방식
+### 서버에 요청하는 법
+- 주소창: 단순 `GET` 요청.
+- Form 태그: 데이터와 같이 서버 요청. but, 페이지 새로고침 일어남.
+- AJAX: 새로고침 없이 서버 요청.
+
+### 서버 요청 시 데이터 전달하는 법
+- URL Parameter: 데이터 전달 방법.  
+- Query String: 간단한 쿼리 데이터 추가.
+- Request Body: POST/PUT 요청 시 데이터 전송 방식.
+<br/>
+
+## HTTP 응답코드
+서버가 클라이언트 요청에 대해 반환하는 결과를 나타내는 상태코드
+
+### 응답 코드의 분류
+- `1XX` (정보): 요청을 수신했으며 처리 중
+- `2XX` (성공): 요청이 성공적으로 처리됨
+- `3XX` (리다이렉션): 클라이언트가 추가 조치를 취해야 함
+- `4XX` (클라이언트 에러): 요청 오류
+- `5XX` (서버 에러): 서버가 요청 처리에 실패
+
+### 주요 응답 코드
+| **상태 코드**        | **설명**                          | **사용 예시**                  |
+|-----------------------|-----------------------------------|---------------------------------|
+| `200 OK`             | 요청 성공                        | 데이터 조회, 수정 등 성공      |
+| `201 Created`        | 데이터 생성 성공                 | POST 요청에서 사용             |
+| `400 Bad Request`    | 잘못된 요청                      | 요청 데이터가 잘못된 경우      |
+| `404 Not Found`      | 요청한 리소스를 찾을 수 없음      | 잘못된 URL 또는 경로 요청      |
+| `500 Internal Server Error` | 서버 내부 오류              | 코드 에러 또는 서버 문제        |
+<br/>
+
+## 디자인 원칙: `RESTful API`
+`REST`(Representational State Transfer)의 형식을 잘 따르는 API로 좋은 API하는 디자인 원칙 중 하나.
+  - REST의 형식:
+    - HTTP URI를 통해 자원을 명시하고,
+    - HTTP Methods를 통해,
+    - 해당자원(URL)에 대한 CRUD를 수행하는 것을 의미.
+
+### RESTful API 원칙
+- `Uniform Interface`: 일관성있는 URL, 하나의 URL + method는 하나의 데이터를 가져오게 하고, 간결하며 예측가능해야 함.
+- `Client-Server` 구분: 유저에게 서버역할을 맡기지 마라. 유저와 서버의 역활은 각각 다름.
+- `Stateless (무상태)`: 서버가 이전의 모든 요청과 독립적으로 모든 클라이언트 요청을 완료.
+- `Cacheability`: 요청은 캐싱이 가능해야 함.
+- `Layered system`: 요청 하나는 최종 응답 전까지 여러 단계를 거쳐도 됨.
+- `Code on demand`: 서버는 유저에게 실행가능한 코드를 보내줄 수도 있음.
+
+### 좋은 URL 작명 관습
+- 동사보다는 `명사` 위주로
+- 띄어쓰기는 언더바(_)대신 `대시(-)` 기호
+- 파일 확장자 쓰지 말기
+- 하위 문서를 뜻할 땐 `/`를 기호를 사용함(단 마지막에는 `/`를 포함하지 않음)
+- 행위를 포함하지 않음 ex) delete-article => article
+<br/>
+<br/>
+
+# try/catch (예외처리)
+DB에러(통신에러, id 중복에러등)등 에러가 발생할 때 특정 코드를 실행.
+
+```js
+// server.js
+
+try {
+   await db.collection('post').insertOne(어쩌구)
+} catch (e) {
+   console.log(e)
+   응답.send('DB에러남')
+} 
+```
+<br/>
 
 
 
