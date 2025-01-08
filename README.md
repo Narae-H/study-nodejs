@@ -610,10 +610,38 @@ nodemon을 매번 직접 실행하지 않고, NPM 스크립트로 설정
 
 # 클라이언트와 서버 간 통신
 <img src="https://github.com/Narae-H/study-nodejs/blob/main/asset/readme/client_server_communication.png?raw=true" width="500px" alt="클라이언트와 서버 간 통신"><br/>
+1. 클라이언트(예: 브라우저, 앱, Postman)가 정해진 형식에 맞춰서 [HTTP 요청(Request)](#서버-요청-http-request)을 하면,
+2. [라우터](#라우팅)는 요청의 URL과 Method를 기반으로 요청을 처리할 핸들러를 결정하고,
+3. 서버가 요청을 처리한 후,
+4. 요청 처리에 따라 클라이언트에게 [응답(HTTP Response)](#서버-응답-http-response)
 <br/>
 
-## 라우팅
-서버에서 특정 `URL`과 `HTTP Method`에 따라 요청을 처리하는 방법.
+## `RESTful API` 디자인 패턴
+`클라이언트와 서버 간 통신을 간단하고 일관되며 확장 가능`하게 만들기 위한 디자인패턴 또는 아키텍쳐 스타일. RESTful API는 HTTP 프로토콜을 기반으로 하고, 요청과 응답을 구조화하는데 초점을 맞춤.
+  - REST의 형식:
+    - HTTP URI를 통해 자원을 명시하고,
+    - HTTP Methods를 통해,
+    - 해당자원(URL)에 대한 CRUD를 수행하는 것을 의미.
+
+### RESTful API 원칙
+- `Uniform Interface`: 일관성있는 URL, 하나의 URL + method는 하나의 데이터를 가져오게 하고, 간결하며 예측가능해야 함.
+- `Client-Server` 구분: 유저에게 서버역할을 맡기지 마라. 유저와 서버의 역활은 각각 다름.
+- `Stateless (무상태)`: 서버가 이전의 모든 요청과 독립적으로 모든 클라이언트 요청을 완료.
+- `Cacheability`: 요청은 캐싱이 가능해야 함.
+- `Layered system`: 요청 하나는 최종 응답 전까지 여러 단계를 거쳐도 됨.
+- `Code on demand`: 서버는 유저에게 실행가능한 코드를 보내줄 수도 있음.
+
+### 좋은 URL 작명 관습
+- 동사보다는 명사위주로: `리소스(데이터) 중심`으로 설계 ex) /users: 사용자 데이터를 의미
+- 띄어쓰기는 언더바(_)대신 `대시(-)` 기호
+- 파일 확장자 쓰지 말기
+- 하위 문서를 뜻할 땐 `/`를 기호를 사용함(단 마지막에는 `/`를 포함하지 않음)
+- 행위를 포함하지 않음 ex) delete-article => article
+<br/>
+<br/>
+
+# 라우팅
+클라이언트에서 서버로 요청(Request)이 들어오면, 어떤 요청을 어떻게 처리할지 결정. 
 
 ### Node.js에서의 라우팅 설정
 `Express`와 `method-override` middleware를 사용하여 라우팅 설정 가능
@@ -623,13 +651,15 @@ nodemon을 매번 직접 실행하지 않고, NPM 스크립트로 설정
  - [app.patch()](#apppatch): 데이터 일부 수정
  - [app.app.delete()](#appdelete): 데이터 삭제
 <br/>
+<br/>
 
-## 클라이언트 요청(HTTP Request)
-클라이언트가 서버로 요청을 보낼 때는 정해진 형식에 맞춰서 요청(Request)을 해야하는데, HTTP Request는 아래와 같이 크게 3개 부분으로 나누어져 있음:
+# 서버 요청 (HTTP Request)
+HTTP Request는 3가지 부분으로 나뉜다:
 - Start line: [HTTP Method](#http-method), [HTTP URL](#http-url), HTTP version
 - Header: [HTTP Header](#http-header)
 - Body: Request가 전송하는 데이터를 담고 있는 부분 
 
+## HTTP Request 구조
 ### HTTP Method
 |<center>HTTP Method</center>|<center>설명</center>|<center>[CRUD](#crud) 동작</center>|
 |-----------------|----------------------|--------------------|
@@ -670,19 +700,79 @@ nodemon을 매번 직접 실행하지 않고, NPM 스크립트로 설정
 - 파라미터: 수행하는 작업에 대한 추가적인 정보 ex) 클라이언트 인증을 위한 쿠키
 <br/>
 
-## 서버 요청 처리 방식
+## 서버 요청 방법
 ### 서버에 요청하는 법
-- 주소창: 단순 `GET` 요청.
-- Form 태그: 데이터와 같이 서버 요청. but, 페이지 새로고침 일어남.
-- AJAX: 새로고침 없이 서버 요청.
+- **주소창**: 단순 `GET` 요청.
+- **Form 태그**: 데이터와 같이 서버 요청. but, 서버에서 처리하고 `페이지 전체를 응답하므로 페이지의 새로고침` 일어남.
+- **AJAX**: 데이터와 같이 서버 서버 요청. 서버에서 처리하고 `데이터만을 응답하므로 페이지 새로고침 없음`.
+    ```js
+    fetch('/URL~~', {
+      method : 'POST',
+      headers : { 'Content-Type' : 'application/json' },
+      body : JSON.stringify({a : 1})
+    })
+    ```
 
 ### 서버 요청 시 데이터 전달하는 법
-- URL Parameter: 데이터 전달 방법.  
-- Query String: 간단한 쿼리 데이터 추가.
-- Request Body: POST/PUT 요청 시 데이터 전송 방식.
+- **URL Parameter**: 클라이언트가 서버로 데이터를 전달할 때 `URL 중간 또는 끝`에 데이터를 넣어 전달하는 방식으로, 글 상세페이지처럼 같이 `HTML 레이아웃을 공유하나 내용만 각기 다른 경우 특정 리소스를 식별`하기 위해 사용
+  ```URL
+  GET /users/123
+  ```
+  ```js
+  app.get('/users/:id', (req, res) => {
+      const userId = req.params.id; // URL 파라미터 추출
+      res.send(`User ID: ${userId}`);
+  });
+  ```
+- **Query String**: 클라이언트가 서버로 데이터를 전달할 때 `URL의 끝에 ? 기호를 사용하여 키=값 형태로 데이터를 추가`하는 방식입니다. 주로 필터링, 검색, 정렬 등의 목적을 위해 사용
+  ```URL
+  GET /search?query=Node.js&page=2&sort=asc
+  ```
+  ```js
+  app.get('/search', (req, res) => {
+      const query = req.query.query; // "Node.js"
+      const page = req.query.page;  // "2"
+      const sort = req.query.sort;  // "asc"
+      
+      res.send(`Query: ${query}, Page: ${page}, Sort: ${sort}`); // Query: Node.js, Page: 2, Sort: asc
+  });
+  ```
+- **Request Body**: `fetch()메소드`를 통해서 요청 시 데이터를 전달하는 방식으로 데이터가 URL처럼 밖으로 드러나지 않음. FormData를 받아와서 body로 전달도 가능. 
+  ```js
+  const url = "https://example.com/api/users";
+  const data = {
+    name: "John Doe",
+    age: 30,
+  };
+
+  fetch(url, {
+    method: "POST", // HTTP 메소드
+    headers: { "Content-Type": "application/json" }, // 요청 데이터 형식
+    body: JSON.stringify(data), // 데이터를 JSON 문자열로 변환하여 전달
+  })
+    .then(response => {
+      if (!response.ok) {
+          throw new Error("Network response was not ok " + response.statusText);
+      }
+      return response.json(); // 응답 데이터 JSON 파싱
+    })
+    .then(data => {
+      console.log("Success:", data);
+    })
+    .catch(error => {
+      console.error("Error:", error);
+    });
+  ```
+<br/>
 <br/>
 
-## HTTP 응답코드
+# 서버 응답 (HTTP Response)
+HTTP Response는 Request와 동일하게 3가지 부분으로 나뉜다:
+- Status Line
+- Header
+- Body
+
+## 서버 응답 코드(HTTP Response)
 서버가 클라이언트 요청에 대해 반환하는 결과를 나타내는 상태코드
 
 ### 응답 코드의 분류
@@ -700,29 +790,6 @@ nodemon을 매번 직접 실행하지 않고, NPM 스크립트로 설정
 | `400 Bad Request`    | 잘못된 요청                      | 요청 데이터가 잘못된 경우      |
 | `404 Not Found`      | 요청한 리소스를 찾을 수 없음      | 잘못된 URL 또는 경로 요청      |
 | `500 Internal Server Error` | 서버 내부 오류              | 코드 에러 또는 서버 문제        |
-<br/>
-
-## `RESTful API` 디자인
-`REST`(Representational State Transfer)의 형식을 잘 따르는 API로 좋은 API하는 디자인 원칙 중 하나.
-  - REST의 형식:
-    - HTTP URI를 통해 자원을 명시하고,
-    - HTTP Methods를 통해,
-    - 해당자원(URL)에 대한 CRUD를 수행하는 것을 의미.
-
-### RESTful API 원칙
-- `Uniform Interface`: 일관성있는 URL, 하나의 URL + method는 하나의 데이터를 가져오게 하고, 간결하며 예측가능해야 함.
-- `Client-Server` 구분: 유저에게 서버역할을 맡기지 마라. 유저와 서버의 역활은 각각 다름.
-- `Stateless (무상태)`: 서버가 이전의 모든 요청과 독립적으로 모든 클라이언트 요청을 완료.
-- `Cacheability`: 요청은 캐싱이 가능해야 함.
-- `Layered system`: 요청 하나는 최종 응답 전까지 여러 단계를 거쳐도 됨.
-- `Code on demand`: 서버는 유저에게 실행가능한 코드를 보내줄 수도 있음.
-
-### 좋은 URL 작명 관습
-- 동사보다는 `명사` 위주로
-- 띄어쓰기는 언더바(_)대신 `대시(-)` 기호
-- 파일 확장자 쓰지 말기
-- 하위 문서를 뜻할 땐 `/`를 기호를 사용함(단 마지막에는 `/`를 포함하지 않음)
-- 행위를 포함하지 않음 ex) delete-article => article
 <br/>
 <br/>
 
