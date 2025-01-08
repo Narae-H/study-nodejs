@@ -1,41 +1,114 @@
-const express = require('express')
-const app = express()
+// 1. Settings
+// 1-1. Import modules
+const express = require('express');
+const methodOverride = require('method-override');
+const { MongoClient, ObjectId } = require('mongodb');
 
-app.use(express.static(__dirname + '/public'));
-app.set('view engine', 'ejs');
+// 1-2. Create an Express instance
+const app = express();
 
-// mongoDB 연결하기 위한 코드
-const { MongoClient } = require('mongodb')
+// 1-3. Set middleware
+app.use(express.static(__dirname + '/public')); // Static folders
+app.use(express.json());                        // req.body
+app.use(express.urlencoded({extended:true}));   // req.body
+app.use(methodOverride('_method'));
 
+// 1-4. Set template engine
+app.set('view engine', 'ejs');                  // EJS
+
+// 2. DB connection
 let db
-const url = 'mongodb+srv://@cluster0.tuq6e.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'
+const url = 'mongodb+srv://admin:qwer1234@cluster0.tuq6e.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'
 new MongoClient(url).connect().then((client)=>{
-  console.log('DB연결성공')
+  console.log('Successfully DB connected')
   db = client.db('forum')
   
+  // Run a server
   app.listen(8080, () => {
-      console.log('http://localhost:8080 에서 서버 실행중')
+      console.log('Server is running on http://localhost:8080');
   })
 }).catch((err)=>{
-  console.log(err)
+  console.log(err);
+});
+
+
+// 3. Routing
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/index.html')
+});
+
+app.get("/list", async (req, res) => {
+  let result = await db.collection('post').find().toArray();
+  res.render('list.ejs', {글목록: result});
 })
 
-app.get('/', (요청, 응답) => {
-  응답.sendFile(__dirname + '/index.html')
-}) 
+app.get("/write", (req, res) => {
+  res.render('write.ejs');
+})
 
-// app.get('/news', (요청, 응답) => {
-//   db.collection('post').insertOne({title: "어쩌구"})
+// Insert data
+app.post("/add", async (req, res) => {
+  try {
+    if( req.body.title == '') {
+      res.send("No title!");
+    } else {
+      // 1. Insert the data into the DB
+      await db.collection('post').insertOne(req.body);
+    
+      // 2. Handing Request 
+      res.redirect('/list'); // redirect
+    }
+  } catch(e) {
+    console.log(e);
+    res.status(500).send('Server error!');
+  }
+})
+
+app.get("/detail/:id", async (res, req) => {
+  try {
+    // 1. Get URL parameter
+    let id = res.params.id;
+
+    // 2. Find data from DB
+    let result = await db.collection('post').findOne({_id: new ObjectId(id)});
+    
+    // 3. Rendering
+    if( result == null) {
+      req.status(404).send("The item doesn't exsit");
+    } else {
+      req.render("detail.ejs", result);
+    }
+    
+  } catch(e) {
+    req.status(404).send('Undefined URL');
+  }
+})
+
+app.get("/edit/:id", async (res, req) => {
+  // 1. Find data from DB
+  let result = await db.collection('post').findOne({_id: new ObjectId(res.params.id)});
+  
+  // 2. Render
+  req.render("edit.ejs", result);
+})
+
+// Update data
+// app.post("/edit/:id", async (res, req) => {
+  //   // 1. Update
+  //   await db.collection('post').updateOne({_id: new ObjectId(res.params.id)}, {$set: res.body});
+  
+  //   // 2. Render
+  //   req.redirect("list.ejs");
 // })
 
-app.get("/list", async (요청, 응답) => {
-  let result = await db.collection('post').find().toArray();
-  응답.render('list.ejs', {글목록: result});
-})
-
-app.get("/time", (요청, 응답) => {
-  let date = new Date();
-  console.log(date);
-
-  응답.render('time.ejs', {오늘: date} )
+// Update data
+app.put("/edit/:id", async (res, req) => {
+  // 1. Update
+  const post = await db.collection('post').updateOne(
+    { _id: new ObjectId(res.params.id) },
+    { $set: res.body }
+  );
+  
+  // 2. Render
+  req.redirect("/list");
 })

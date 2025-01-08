@@ -15,10 +15,21 @@
   <div class="white-bg">
     <% for(let i=0; i<글목록.length; i++) { %>
       <div class="list-box">
-        <h4><%= 글목록[i].title %></h4>
+        <h4>
+          <a href="/detail/<%= 글목록[i]._id %>"><%= 글목록[i].title %></a>
+          <a href="/edit/<%= 글목록[i]._id %>">✏️</a>
+          <span id="delete">🗑️</span>
+        </h4>
         <p><%= 글목록[i].content %></p>
       </div>
     <% } %> 
   </div>
+
+<script>
+document.querySelectorAll("#delete")[0].addEventListener("click", function() {
+  
+});
+</script>
+
 </body>
 </html>
