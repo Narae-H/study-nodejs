@@ -42,6 +42,24 @@ app.get("/list", async (req, res) => {
   res.render('list.ejs', {글목록: result});
 })
 
+// skip() && limit() 사용
+app.get("/list/:page", async (req, res) => {
+  const page = req.params.page;
+  const pageSize = 5;
+  
+  let result = await db.collection('post').find().skip((page-1)*pageSize).limit(pageSize).toArray();
+  res.render('list.ejs', {글목록: result});
+})
+
+// find(이전의 아이디) && limit() 사용
+app.get("/list/next/:page", async (req, res) => {
+  const page = req.params.page;
+  const pageSize = 5;
+
+  let result = await db.collection('post').find().skip((page-1)*pageSize).limit(pageSize).toArray();
+  res.render('list.ejs', {글목록: result});
+})
+
 app.get("/write", (req, res) => {
   res.render('write.ejs');
 })
@@ -64,32 +82,32 @@ app.post("/add", async (req, res) => {
   }
 })
 
-app.get("/detail/:id", async (res, req) => {
+app.get("/detail/:id", async (req, res) => {
   try {
     // 1. Get URL parameter
-    let id = res.params.id;
+    let id = req.params.id;
 
     // 2. Find data from DB
     let result = await db.collection('post').findOne({_id: new ObjectId(id)});
     
     // 3. Rendering
     if( result == null) {
-      req.status(404).send("The item doesn't exsit");
+      res.status(404).send("The item doesn't exsit");
     } else {
-      req.render("detail.ejs", result);
+      res.render("detail.ejs", result);
     }
     
   } catch(e) {
-    req.status(404).send('Undefined URL');
+    res.status(404).send('Undefined URL');
   }
 })
 
-app.get("/edit/:id", async (res, req) => {
+app.get("/edit/:id", async (req, res) => {
   // 1. Find data from DB
-  let result = await db.collection('post').findOne({_id: new ObjectId(res.params.id)});
+  let result = await db.collection('post').findOne({_id: new ObjectId(req.params.id)});
   
   // 2. Render
-  req.render("edit.ejs", result);
+  res.render("edit.ejs", result);
 })
 
 // Update data
@@ -102,13 +120,22 @@ app.get("/edit/:id", async (res, req) => {
 // })
 
 // Update data
-app.put("/edit/:id", async (res, req) => {
+app.put("/edit/:id", async (req, res) => {
   // 1. Update
   const post = await db.collection('post').updateOne(
-    { _id: new ObjectId(res.params.id) },
+    { _id: new ObjectId(req.params.id) },
     { $set: res.body }
   );
   
   // 2. Render
-  req.redirect("/list");
+  res.redirect("/list");
+})
+
+// delete
+app.delete("/delete", async (req, res)=> {
+  await db.collection('post').deleteOne(
+    { _id: new ObjectId(req.body._id) }
+  )
+
+  res.send("삭제완료");
 })

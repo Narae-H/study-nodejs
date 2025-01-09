@@ -18,7 +18,7 @@
         <h4>
           <a href="/detail/<%= 글목록[i]._id %>"><%= 글목록[i].title %></a>
           <a href="/edit/<%= 글목록[i]._id %>">✏️</a>
-          <span id="delete">🗑️</span>
+          <span class="delete" data-id="<%= 글목록[i]._id %>" style="cursor: pointer;">🗑️</span>
         </h4>
         <p><%= 글목록[i].content %></p>
       </div>
@@ -26,9 +26,23 @@
   </div>
 
 <script>
-document.querySelectorAll("#delete")[0].addEventListener("click", function() {
-  
-});
+  document.querySelectorAll(".delete").forEach( (item)=>{
+    item.addEventListener("click", function(e) {
+      fetch("/delete", {
+        method : 'DELETE',
+        headers : { 'Content-Type' : 'application/json' },
+        body : JSON.stringify({_id : e.target.dataset.id})
+      })
+      .then( (r) => r.text() )
+      .then( (r) => { 
+        console.log(r);
+
+        // 새로고침 없이 그냥 안보이게만 하기 (어차피 데이터는 삭제되었음)
+        e.target.parentElement.parentElement.style.display = 'none';
+      }) 
+    })
+  })
+
 </script>
 
 </body>
