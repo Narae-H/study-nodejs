@@ -373,8 +373,58 @@ DB 작업은 시간이 걸리는 I/O 작업으로 `await`을 사용(에러 발�
 - 용도: 여러 collection에서 조건에 맞는 document를 조회
 - 사용 예시: 
     ```js
+    // 조건없이 전부 가져옴
     db.collection('컬렉션명').find().toArray();
+
+    // 조건이 필요할 때
+    // db.collection('컬렉션명').find(쿼리(조건)).toArray();
+    db.collection('컬렉션명').find({ age: { $gte: 18 } }); // age가 18 이상인 documnet만 찾음.
     ```
+
+### skip()
+- 용도: 조회된 결과에서 처음 몇 개의 데이터를 건너 띔
+- 사용예시:
+    ```js
+    // db.collection.find(쿼리(조건)).skip(띄어넘고 싶은 숫자);
+    db.collection('컬렉션명').find().skip(10); // 처음 10개 문서를 건너뛰고 나머지 데이터를 반환
+    ```
+
+### limit()
+- 용도: 반환할 문서의 수를 제한
+- 사용예시:
+    ```js
+    // db.collection.find(쿼리(조건)).limit(반환할 document의 최대 개수);
+    db.users.find().limit(5); // 처음 5개의 document만 반환
+    ```
+      
+  ><details>
+  >
+  ><summary><sup>- `find()`, `skip()`, `limit()`을 사용하여 페이지네이션 구현 가능.</sup></summary>
+  >
+  >```js
+  >const page = 2; // 페이지 번호
+  >const pageSize = 5; // 한 페이지에 표시할 문서 수
+  >
+  >// 방법 1: skip() && limit(): 예를들어, 1번부터 5번글까지 가져와라.
+  >// skip()은 성능 이슈가 있음. 100만 이상의 숫자를 넣으면 매우 오래 걸림.
+  >db.collection('post')
+  >  .find()                      // 조건: 모든 데이터 중
+  >  .skip((page - 1) * pageSize) // n번 부터
+  >  .limit(pageSize);            // pageSize만큼 가져와라
+  >
+  >// 방법 2: find() && limit(): 방금 본 마지막 게시물의 id부터 n번까지
+  >// id로 찾아오기때문에 속도 빠름, 페이지네이션을 숫자로 못하고, 방금 본 마지막 게시물의 id를 받아오기 위해서 >다음버튼으로 구현해야함.  
+  >db.collection('post')
+  >  .find( {_id : {$gt : 방금본 마지막게시물_id}} ) // 조건: 방금본 마지막 게시물의 _id 초과된 _id 중
+  >  .limit(pageSize);                            // pageSzie 만큼 가져와라.
+  >
+  >// 방법 3: find() && skip() && limit()
+  >db.collection('post')
+  >  .find({ age: { $gte: 18 } }) // 조건
+  >  .skip((page - 1) * pageSize) // 건너뛰기
+  >  .limit(pageSize);            // 제한
+  >```
+  ></details>
 
 ### updateOne()
 - 용도: 조건에 맞는 하나의 document를 업데이트
@@ -418,8 +468,11 @@ DB 작업은 시간이 걸리는 I/O 작업으로 `await`을 사용(에러 발�
 ### deleteOne()
 - 용도: 조건에 맞는 한 개의 document를 삭제
 - 사용 예시: 
-```js
-```
+    ```js
+    db.collection('컬렉션명').deleteOne(
+      { _id: new ObjectId(req.body._id) }
+    )
+    ```
 
 ### deleteMany()
 - 용도: 조건에 맞는 여러 개의 document를 삭제
@@ -704,14 +757,7 @@ HTTP Request는 3가지 부분으로 나뉜다:
 ### 서버에 요청하는 법
 - **주소창**: 단순 `GET` 요청.
 - **Form 태그**: 데이터와 같이 서버 요청. but, 서버에서 처리하고 `페이지 전체를 응답하므로 페이지의 새로고침` 일어남.
-- **AJAX**: 데이터와 같이 서버 서버 요청. 서버에서 처리하고 `데이터만을 응답하므로 페이지 새로고침 없음`.
-    ```js
-    fetch('/URL~~', {
-      method : 'POST',
-      headers : { 'Content-Type' : 'application/json' },
-      body : JSON.stringify({a : 1})
-    })
-    ```
+- **AJAX**: 데이터와 같이 서버 서버 요청. 서버에서 처리하고 `데이터만을 응답하므로 페이지 새로고침 없음`. ([참고](https://github.com/Narae-H/study-javascript?tab=readme-ov-file#%EC%84%9C%EB%B2%84%EC%97%90-%EB%8D%B0%EC%9D%B4%ED%84%B0-%EC%9A%94%EC%B2%AD-ajax))
 
 ### 서버 요청 시 데이터 전달하는 법
 - **URL Parameter**: 클라이언트가 서버로 데이터를 전달할 때 `URL 중간 또는 끝`에 데이터를 넣어 전달하는 방식으로, 글 상세페이지처럼 같이 `HTML 레이아웃을 공유하나 내용만 각기 다른 경우 특정 리소스를 식별`하기 위해 사용
@@ -807,6 +853,106 @@ try {
 } 
 ```
 <br/>
+<br/>
+
+# 회원가입 & 로그인 기능
+회원만 글을 볼 수 있게 하고 싶다면, 회원가입과 로그인 기능이 필요. 
+ - 회원가입: 유저가 가입하면 아아디/비번을 DB에 저장해 둠.
+ - 로그인: 유저가 로그인 시 아이디/비번을 서버로 보내고, 일치하다면 서버는 입장권을 발급해줌.
+
+## Session 방식
+`DB에서 사용자 인증 정보`를 저장하고 브라우저에게 Session ID를 쿠키로 전달하는 방식
+
+### 방법
+**로그인할 때:**
+1. 유저가 로그인을 하면 DB에 유저의 아이디, 로그인 날짜, 유효기간, Session id를 기록
+2. 유저에게 입장권을 발급해줄 때 입장권에 Session id만 적어서 보냄
+
+**로그인이 필요한 기능을 요청할 때:**
+1. 유저가 GET/POST 요청 시 입장권을 서버에 제출
+2. 입장권에 써있는 session id를 가직 DB를 조회해본 다음 DB기록에 별 이상이 없으면 GET/POST 요청을 진행시켜 줌.
+
+### 장단점
+- 장점: GET/POST 요청할 때 마다 DB를 조회해보기 때문에, 하나하나의 요청마다 엄격하게 유저를 체크
+- 단점: 그 만큼 DB 부담이 많아짐. 유저가 많은 사이트들은 조금 더 빠른 Redis같은 DB를 사용하기도 함.
+<br/>
+
+## Token 기반 인증 방식 (JWT)
+클라이언트가 인증 후 서버에서 발급한 토큰을 `브라우저의 localStorage 또는 sessionStorage에 저장`하고 요청이 들어오면 HTTP 헤더에 토큰을 포함하여 전달하는 방식
+
+**로그인할 때:**
+1. 유저가 로그인을 하면, 
+2. 유저에게 입장권을 발급해줄 때 입장권에 `유저의 아이디, 로그인 날짜, 유효기간`등을 적어두고 암호화해서 보냄(DB 저장X)
+
+**로그인이 필요한 기능을 요청할 때:**
+1. 유저가 GET/POST 요청 시 입장권을 서버에 제출 (입장권은 위변조 힘듬)
+2. 유저가 입장권을 제출하면 유효기간에 별 이상 없으면 통과
+
+### 장단점
+- 장점:  GET/POST 요청할 때 마다 DB를 조회할 필요가 없어서(Stateless) DB 부담이 적음. 유저가 매우 많거나 마이크로서비스형태로 서버를 많이 운영하는 사이트들이 즐겨씀.
+- 단점: 토큰이 클라이언트에 저장되므로 보안에 취약(XSS, CSRF공격), 토큰이 유효기간 동안 유효화 되므로 누군가 특저 이벤트(누군가 훔쳐감)로 중간에 만료시키기 어려움.
+<br/>
+
+## oAuth (Open Authorization)
+`제 3자 인증서비스`(ex: 구글, 페이스북)을 통해 인증. 흔히 소셜로그인이라 불림.
+
+**로그인이 필요한 기능을 요청할 때:**
+1. 유저가 B사이트에서 구글 로그인 버튼을 누르면 구글 계정으로 로그인하라고 뜨는데 로그인
+2. "B 사이트로 유저 개인정보 전송해도 되냐"고 구글이 물어봄
+3. 유저가 허락하면 허락했다고 구글 -> B서버 이렇게 알림을 전송 
+4. 알림이 도착하면 B서버는 구글에게 유저 정보를 요청해서 받아옴.
+
+### 장단점
+- 장점: 사용자 비밀번호를 직접 저장하거나 처리하지 않아도 됨. 여러 어플리케이션에서 동일한 계정으로 로그인 가능(SSO)
+- 단점: 구현이 복잡하고, 제 3자에게 서비스 의존.
+<br/>
+
+## Session VS JWT VS OAuth
+
+|<center>**구분**</center>|<center>**Session**</center>|<Center> **Token (JWT)**</center>| <center>**OAuth**</center>|
+|--------------|------------------------|---------------------------|--------------------------|
+| **저장 위치** | 서버                    | 클라이언트                 | 제3자 서비스               |
+| **상태 관리** | Stateful               | Stateless                 | Stateless                | 
+| **인증 방식** | 쿠키(Session ID) 사용   | HTTP 헤더에 토큰 포함       | 승인 코드 및 액세스 토큰     |
+| **보안 고려** | 서버 보안에 강점         | 클라이언트 보안 중요         | 제3자 서비스 의존          |   
+| **적합 환경** | 전통적 웹 애플리케이션    | API 중심, 분산 시스템       | SSO 또는 제3자 서비스 사용  |
+| **사용 사례** | 단일 서버 기반 애플리케이션| RESTful API, 웹/모바일 혼합| SNS 연동 로그인, SSO 서비스 |
+<br/>
+
+## Passport 라이브러리
+- Node.js 환경에서 로그인 기능 구현 시 직접 코드짜기 귀찮기 때문에 쓰는 라이브러리. 
+- session, JWT, OAuth 중 원하는 방식으로 자유롭게 사용 가능.
 
 
 
+!!! 여기서부터: 회원기능 만들기 1 (passport, 로그인기능)
+session 방식으로 구현하기
+1. 가입기능
+2. 로그인기능
+3. 로그인 완료 시 세션 만들기
+4. 로그인 완료 시 유저에게 입장권 보내줌
+
+passport 라이브러리 사용.
+1. 설치
+```js
+// passport: 회원인증 도와주는 메인라이브러리
+// passport-local: 아이디/비번 방식 회원인증쓸 때 쓰는 라이브러리
+// express-session: 세션 만드는거 도와주는 라이브러리
+npm install express-session passport passport-local 
+```
+
+2. 설정 server.js
+```js
+const session = require('express-session')
+const passport = require('passport')
+const LocalStrategy = require('passport-local')
+
+app.use(passport.initialize())
+app.use(session({
+  secret: '암호화에 쓸 비번',
+  resave : false,
+  saveUninitialized : false
+}))
+
+app.use(passport.session()) 
+```
