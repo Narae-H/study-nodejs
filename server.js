@@ -6,6 +6,8 @@ const { MongoClient, ObjectId } = require('mongodb'); // DB
 const session = require('express-session');           // login: session management middleware
 const passport = require('passport');                 // login: authentication middleware
 const LocalStrategy = require('passport-local');      // login: local strategy
+const bcrypt = require('bcrypt');                     // password encryption
+const MongoStore = require('connect-mongo');          // Automatically save login info to db
 
 // 1-2. Create an Express instance
 const app = express();
@@ -16,24 +18,32 @@ app.use(express.json());                        // req.body
 app.use(express.urlencoded({extended:true}));   // req.body
 app.use(methodOverride('_method'));
 
+const dburl = 'mongodb+srv://@cluster0.tuq6e.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'
+
 // 1-4. passport library setting
 // session settings
 app.use(session({
   secret: '암호화에 쓸 비번',
   resave : false,
   saveUninitialized : false,
-  // cookie : { maxAge : 60 * 60 * 1000 } // 1시간
+  cookie : { maxAge : 60 * 60 * 1000 }, // 1시간
+  store: MongoStore.create({
+    mongoUrl : dburl,
+    dbName: 'forum',
+  })
 }))
 app.use(passport.initialize())
 app.use(passport.session()); 
 
 // Passport authentication strategy
 passport.use(new LocalStrategy(async (입력한아이디, 입력한비번, cb) => {
-  let result = await db.collection('user').findOne({ username : 입력한아이디})
+  let result = await db.collection('user').findOne({ username : 입력한아이디});
+
   if (!result) {
     return cb(null, false, { message: '아이디 DB에 없음' })
   }
-  if (result.password == 입력한비번) {
+
+  if (await bcrypt.compare(입력한비번, result.password)) {
     return cb(null, result); // 로그인 성공
   } else {
     return cb(null, false, { message: '비번불일치' });
@@ -63,8 +73,7 @@ app.set('view engine', 'ejs'); // EJS
 
 // 2. DB connection
 let db
-const url = 'mongodb+srv://@cluster0.tuq6e.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'
-new MongoClient(url).connect().then((client)=>{
+new MongoClient(dburl).connect().then((client)=>{
   console.log('Successfully DB connected')
   db = client.db('forum')
   
@@ -106,7 +115,11 @@ app.get("/list/next/:page", async (req, res) => {
 })
 
 app.get("/write", (req, res) => {
-  res.render('write.ejs');
+  if( req.isAuthenticated() ) {
+    res.render('write.ejs', {user: req.user});
+  } else {
+    res.redirect("/login")
+  }
 })
 
 // Insert data
@@ -217,3 +230,33 @@ app.get("/mypage", (req, res)=>{
   }
 
 });
+
+// Join
+app.get("/register", (req, res)=> {
+  res.render("register.ejs");
+}) 
+
+// Join
+app.post("/register", async (req, res) => {
+  console.log(req.body);
+  if( !req.body.username.trim() || !req.body.password.trim() ) {
+     return res.send("Username 또는 password를 입력해주세요");
+  }
+
+  let result = await db.collection('user').findOne({ username : req.body.username});
+  if( result ) {
+    return res.send("중복된 유저가 있습니다. 새로운 username을 입력해주세요");
+  }
+
+  if( req.body.password != req.body.password1 ) {
+    return res.send("비밀번호가 일치하지않습니다. 다시 확인해주세요");
+  }
+
+  let hashedPW = await bcrypt.hash(req.body.password, 10);
+  await db.collection("user").insertOne({
+    username: req.body.username, 
+    password: hashedPW
+  });
+
+  res.redirect("/login");
+})

@@ -936,128 +936,201 @@ try {
     - 세션 document의 _id 같은걸 가져와서 유저 쿠키에 강제 저장.
 3. **인증**: 유저가 로그인이 필요한 페이지 같은ㄴ거 방문할 때 마다 서버는 유저가 제출한 쿠키 확인. _id와 유효기간 확인하고 페이지로 이동
 
-### 사용법
-1. 설치
+### 설치
     ```sh
     # passport: 회원인증 도와주는 메인라이브러리
     # passport-local: 아이디/비번 방식 회원인증쓸 때 쓰는 라이브러리
     # express-session: 세션 만드는거 도와주는 라이브러리
     npm install express-session passport passport-local 
+
+    # 비번 해싱(암호화) 라이브러리. 해싱된 문자보고 원래 문자 유추 불가능.
+    # 해싱: 어떤 문자를 다른 랜덤한 문자로 바꾸기 ex. SHA3-256, SHA3-512, bcrypt, scrypt, argon2
+    npm install bcrypt
+
+    # Session을 MongoDB에 저장해주는 라이브러리
+    npm install connect-mongo 
     ```
 
-2. 로그인 기능 구현
-- 로그인 기능 테스트하기 위해서 임시로 DB에 유저하나 생성하기
-  - forum안에 collection 생성: `user`
-  - document 생성: `{ username: "test", password: "1234" }`
+### 코드 작성
+**1. 회원가입** <br/>
 
-    ```html
-    <!-- login.ejs -->
+```html
+<!-- register.ejs -->
 
-    <body class="grey-bg">
-      <%- include('nav.ejs') %>
+  <form class="form-box" action="/register" method="POST">
+  <h4>회원가입</h4>
+  <input type="text" name="username">
+  <input type="text" name="password">
+  <button type="submit">회원가입</button>
+</form> 
+```
 
-      <form class="form-box" action="/login" method="POST">
-        <h4>로그인</h4>
-        <!-- passport 라이브러리를 쓰기 위해서는 input 태그에 name을 'username', 'password'로 작성 -->
-        <input type="text" name="username">
-        <input type="password" name="password">
-        <button type="submit">로그인</button>
-      </form> 
+```js
+/** server.js */
 
-    </body>
-    ```
+// 모듈 불러오기
+const bcrypt = require('bcrypt'); // password encryption
 
-    ```js
-    // server.js
+// 회원가입 페이지 이동
+app.get("/register", (req, res)=> {
+  res.render("register.ejs");
+}) 
 
-    // 1. Import required modules to login
-    const session = require('express-session');      // 세션 관리 미들웨어
-    const passport = require('passport');            // 인증 미들웨어 
-    const LocalStrategy = require('passport-local'); // 로컬 전략을 정의하는 미들웨어(아이디와 비번을 DB와 비교)
+// 회원가입
+app.post("/register", async (req, res) => {
+  // 비번은 bcrypt 라이브러리 이용하여 해싱
+  // bcrypt.hash("해싱하고싶은문자", "얼마나꼬아줄지")
+  // 해시결과 = salt + hash
+  // salt: 그냥 해싱하는게 아니라 뒤에 붙는 랜덤문자열
+  // pepper: 더 보안을 높히기 위해 salt를 비번 옆에 함께 보관하는게 아니라 별도의 DB나 하드웨어에 보관하는 방법
 
-    // 2. Set global middleware: session settings
-    // session(): 언제 어떻게 세션을 만들지 정함
-    //  - secret: 세션 암호화를 위한 비밀 키. 반드시 보인에 유의해야 함. 
-    //  - resave: 유저가 요청할 때 마다 session을 다시 저장할지 여부 (false 추천)
-    //  - saveUninitialized: 로그인하지 않은 사용자의 세션도 저장할지 여부 (false 추천) 
-    //  - cookie: 세션 유효기간 설정. 밀리세컨드 단위. default: 2주
-    app.use(session({
-      secret: '암호화에 쓸 비번',
-      resave : false, 
-      saveUninitialized : false,
-      cookie : { maxAge : 60 * 60 * 1000 } // 1시간
-    }))
+  // sessions라는 DB에 _id, expires, session 정보 자동 저장됨.
+  let hashedPW = await bcrypt.hash(req.body.password, 10); 
 
-    app.use(passport.initialize()); // Passport 초기화
-    app.use(passport.session());    // 세션을 통한 사용자 인증을 처리
+  // db에 username과 암호화된 password 저장
+  await db.collection("user").insertOne({
+    username: req.body.username, 
+    password: hashedPW
+  });
 
-    // 3. LocalStrategy 설정: 아이디/비번이 DB와 일치하는지 전략을 생성하는 객체
-    // cb: 콜백함수로 인증 결과를 반환.
-    //  - cb(null, false): 인증 실패
-    //  - cb(null, user): 인증성공 (사용자 정보를 반환)
-    passport.use(new LocalStrategy(async (입력한아이디, 입력한비번, cb) => {
-      let result = await db.collection('user').findOne({ username : 입력한아이디})
-      if (!result) {
-        return cb(null, false, { message: '아이디 DB에 없음' })
-      }
-      if (result.password == 입력한비번) {
-        return cb(null, result); // 로그인 성공
-      } else {
-        return cb(null, false, { message: '비번불일치' });
-      }
-    }));
+  res.redirect("/login");
+})
+```
 
-    // 4. 세션 생성: 로그인 성공할 때마다
-    // 유저가 로그인 성공할때 호출되며 세션에 저장할 정보를 설정
-    //   - user: 인증 성고한 사용자 객체
-    //   - done: 세션에 저장할 데이터를 반환하는 콜백함수
-    passport.serializeUser((user, done) => {
-      process.nextTick(() => {
-        done(null, { id: user._id, username: user.username }); // 사용자의 ID와 username을 세션에 저장
-      })
+**2. 로그인** <br/>
+
+```html
+<!-- login.ejs -->
+
+<body class="grey-bg">
+  <%- include('nav.ejs') %>
+
+  <form class="form-box" action="/login" method="POST">
+    <h4>로그인</h4>
+    <!-- passport 라이브러리를 쓰기 위해서는 input 태그에 name을 'username', 'password'로 작성 -->
+    <input type="text" name="username">
+    <input type="password" name="password">
+    <button type="submit">로그인</button>
+  </form> 
+
+</body>
+```
+
+```js
+// server.js
+
+// 1. Import required modules to login
+const session = require('express-session');      // 세션 관리 미들웨어
+const passport = require('passport');            // 인증 미들웨어 
+const LocalStrategy = require('passport-local'); // 로컬 전략을 정의하는 미들웨어(아이디와 비번을 DB와 비교)
+
+// 2. Set global middleware: session settings
+// session(): 언제 어떻게 세션을 만들지 정함
+//  - secret: 세션 암호화를 위한 비밀 키. 반드시 보인에 유의해야 함. 
+//  - resave: 유저가 요청할 때 마다 session을 다시 저장할지 여부 (false 추천)
+//  - saveUninitialized: 로그인하지 않은 사용자의 세션도 저장할지 여부 (false 추천) 
+//  - cookie: 세션 유효기간 설정. 밀리세컨드 단위. default: 2주
+app.use(session({
+  secret: '암호화에 쓸 비번',
+  resave : false, 
+  saveUninitialized : false,
+  cookie : { maxAge : 60 * 60 * 1000 } // 1시간
+}))
+
+app.use(passport.initialize()); // Passport 초기화
+app.use(passport.session());    // 세션을 통한 사용자 인증을 처리
+
+// 3. LocalStrategy 설정: 아이디/비번이 DB와 일치하는지 전략을 생성하는 객체
+// cb: 콜백함수로 인증 결과를 반환.
+//  - cb(null, false): 인증 실패
+//  - cb(null, user): 인증성공 (사용자 정보를 반환)
+passport.use(new LocalStrategy(async (입력한아이디, 입력한비번, cb) => {
+  let result = await db.collection('user').findOne({ username : 입력한아이디})
+  if (!result) {
+    return cb(null, false, { message: '아이디 DB에 없음' })
+  }
+
+  // bcrypt.compare()를 이용하여 입력한비번과 db의 비번을 비교
+  if ( await bcrypt.compare(입력한비번, result.passowrd)) {
+    return cb(null, result); // 로그인 성공
+  } else {
+    return cb(null, false, { message: '비번불일치' });
+  }
+}));
+
+// 4. 세션 생성: 로그인 성공할 때마다
+// 유저가 로그인 성공할때 호출되며 세션에 저장할 정보를 설정
+//   - user: 인증 성고한 사용자 객체
+//   - done: 세션에 저장할 데이터를 반환하는 콜백함수
+passport.serializeUser((user, done) => {
+  process.nextTick(() => {
+    done(null, { id: user._id, username: user.username }); // 사용자의 ID와 username을 세션에 저장
+  })
+})
+
+// 5. 세션 검증: 디폴트는 유저가 뭔가 서버로 요청할 때마다 실행(항상 세션검증이 필요한건 아니니깐 특정 route에서만 실행시킬 수도 있음)
+// 세션에 저장된 정보를 바탕으로 실제 사용자 데이터를 복원. 너무 오래된 세션이라면 변질되었을 수도 있으니깐
+//  - user: serializeUser에서 저장한 세션 데이터(ID, username)
+//  - done: 복원된 사용자 데이터를 반환하는 콜백함수
+passport.deserializeUser( async (user, done) => {
+  // 5-1) 세션에서 복원된 사용자 ID로 DB를 조회
+  let result = await db.collection('user').findOne({_id : new ObjectId(user.id) })
+  delete result.password; // 비밀번호는 보안상 삭제
+
+  // 5-2) 사용자의 유저정보 반환
+  process.nextTick(() => {
+    return done(null, result); // 쿠키 이상 없으면 유저 정보 반환
+  })
+})
+
+// 4. 랜더링
+// 4-1. 로그인 페이지
+app.get("/login", (req, res) => {
+  res.render("login.ejs");
+})
+
+// 4-2. 로그인
+// passport.authenticate('local', (err, user, info) => {}): LocalStrategy를 사용해 로그인 요청 검증.
+//  - err: 서버에서 발생한 에러
+//  - user: 인증 성공 시 반환된 사용자 객체
+//  - info: 인증 실패 시의 메시지
+app.post("/login", async (req, res, next) =>{
+  // 위에서 만든 LocalStrategy에 따라 검증 시행
+  passport.authenticate('local', (error, user, info) => {
+    if(error) return res.status(500).json(error);        // 서버 에러
+    if(!user) return res.status(401).json(info.message); // 로그인 실패: user가 null임
+    
+    // 로그인 성공: 인증 성공 후 세션에 사용자의 정보를 저장
+    res.login(user, (err) => {
+      if(err) return next(err); // 세션 저장 중 에러 처리
+      res.redirect('/');        // 메인 페이지로 리다이렉트
     })
+  })(req, res, next);
+});
+```
 
-    // 5. 세션 검증: 유저가 뭔가 서버로 요청할 때마다
-    // 세션에 저장된 정보를 바탕으로 실제 사용자 데이터를 복원. 너무 오래된 세션이라면 변질되었을 수도 있으니깐
-    //  - user: serializeUser에서 저장한 세션 데이터(ID, username)
-    //  - done: 복원된 사용자 데이터를 반환하는 콜백함수
-    passport.deserializeUser( async (user, done) => {
-      // 5-1) 세션에서 복원된 사용자 ID로 DB를 조회
-      let result = await db.collection('user').findOne({_id : new ObjectId(user.id) })
-      delete result.password; // 비밀번호는 보안상 삭제
-
-      // 5-2) 사용자의 유저정보 반환
-      process.nextTick(() => {
-        return done(null, result); // 쿠키 이상 없으면 유저 정보 반환
-      })
-    })
-
-    // 4. 랜더링
-    // 4-1. 로그인 페이지
-    app.get("/login", (req, res) => {
-      res.render("login.ejs");
-    })
-
-    // 4-2. 로그인
-    // passport.authenticate('local', (err, user, info) => {}): LocalStrategy를 사용해 로그인 요청 검증.
-    //  - err: 서버에서 발생한 에러
-    //  - user: 인증 성공 시 반환된 사용자 객체
-    //  - info: 인증 실패 시의 메시지
-    app.post("/login", async (req, res, next) =>{
-      // 위에서 만든 LocalStrategy에 따라 검증 시행
-      passport.authenticate('local', (error, user, info) => {
-        if(error) return res.status(500).json(error);        // 서버 에러
-        if(!user) return res.status(401).json(info.message); // 로그인 실패: user가 null임
-        
-        // 로그인 성공: 인증 성공 후 세션에 사용자의 정보를 저장
-        res.login(user, (err) => {
-          if(err) return next(err); // 세션 저장 중 에러 처리
-          res.redirect('/');        // 메인 페이지로 리다이렉트
-        })
-      })(req, res, next);
-    });
-
-    ```
-
-3. 쿠키에 세션정보 저장되었는지 확인
+**3. 세션정보 확인**: 쿠키에 session이 저장되었는지 확인 <br/>
 개발자도구(F12) > Application 탭 > Cookies 메뉴 > connect.sid 있나 확인
+
+**4. 세션을 DB에 저장** <br/>
+session을 컴퓨터 메모리에 임시 저장하면 서버가 재시작되면 다시 로그인해야함.
+이를 방지하기 위해 `connect-mongo`라는 라이브러리 활용하여 DB에 session을 저장함.
+
+```js
+/** server.js */
+
+// connect-mongo 사용하면 forum(내 DB)안에 sessions라는 컬렉션을 만들어서 거기서 세션 관리해줌.
+// 유효기간이 지나면 자동으로 삭제해줌.
+const MongoStore = require('connect-mongo');
+
+app.use(session({
+  resave : false,
+  saveUninitialized : false,
+  secret: '세션 암호화 비번~~',
+  cookie : {maxAge : 1000 * 60},
+  store: MongoStore.create({
+    mongoUrl : '님들 DB접속용 URL~~',
+    dbName: 'forum', //이 DB안에 session저장
+  })
+})) 
+```
