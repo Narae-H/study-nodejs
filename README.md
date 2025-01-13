@@ -118,8 +118,8 @@ const app = express();
 
 ## 주요 메소드
 ### app.use()
-- 용도: 전체 어플리케이션에 걸쳐 공통적으로 실행되는 로직을 추가할 때 사용. 또한, 여러 개의 미들웨어를 체인처럼 설정할 수 있어 요청이 처리될 때 순차적으로 미들웨어들이 실행되고, 라우트 처리 전에 실행되는 중간 코드.<br/>
-<sup>- `미들웨어`: 요청(request)와 응답(response) 사이에서 특정 작업을 수행하는 함수들</sup>
+- 용도: 전체 어플리케이션에 걸쳐 공통적으로 실행되는 로직을 추가할 때 사용. 또한, 여러 개의 미들웨어를 체인처럼 설정할 수 있어 요청이 처리될 때 순차적으로 미들웨어들이 실행되고, 라우트 처리 전에 실행되는 중간 코드. <small>[미들웨어 자세히](#미들웨어)</small> <br/>
+
 - 사용 예시:
     ```js
     // JSON 데이터를 자동으로 파싱
@@ -696,13 +696,189 @@ nodemon을 매번 직접 실행하지 않고, NPM 스크립트로 설정
 # 라우팅
 클라이언트에서 서버로 요청(Request)이 들어오면, 어떤 요청을 어떻게 처리할지 결정. 
 
-### Node.js에서의 라우팅 설정
+## Node.js에서의 라우팅 설정
 `Express`와 `method-override` middleware를 사용하여 라우팅 설정 가능
  - [app.get()](#appget): 데이터 조회
  - [app.post()](#apppost): 데이터 생성
  - [app.put()](#appput): 데이터 전체 수정
  - [app.patch()](#apppatch): 데이터 일부 수정
  - [app.app.delete()](#appdelete): 데이터 삭제
+<br/>
+
+## API들 다른 파일로 분리
+코드가 너무 길어지면 유지보수와 가독성을 위해 파일을 분리하는 것이 중요함.
+
+### 파일 분리 대상
+**1. 라우트 (Routes)**
+- API 엔드포인트를 처리하는 로직.
+- 각 리소스(예: 유저, 상품, 주문 등)별로 라우트를 나눔.<br/>
+<br/>
+
+**2. 컨트롤러 (Controllers)**
+- 라우트에서 호출되는 비즈니스 로직.
+- 요청을 처리하고 응답을 반환.<br/>
+<br/>
+
+**3. 서비스 (Services)**
+- 데이터베이스 쿼리나 외부 API 호출 같은 비즈니스 로직을 담당.
+- 재사용성이 높은 로직을 포함.<br/>
+<br/>
+
+**4. 모델 (Models)**
+- 라우터가 분리되어있다면, 라우터 안의 로직을 짤 때 DB 연결하는걸 계속 반복할 순 없으니 분리하여 갖다씀.
+- 데이터베이스와 상호작용하는 로직(예: Mongoose, Sequelize).<br/>
+<br/>
+
+**5. 미들웨어 (Middleware)**
+- 인증, 권한 확인, 로깅 등 공통 작업.<br/>
+<br/>
+
+**6. 설정 (Config)**
+- 환경 변수, 데이터베이스 설정, 외부 API 키.<br/>
+<br/>
+
+**7. 유틸리티 (Utils/Helpers)**
+- 자주 사용하는 공통 함수(예: 날짜 포맷, 문자열 처리).<br/>
+<br/>
+
+### 파일 구조
+```json
+project/
+│
+├── server.js                // 서버 초기화 코드
+├── routes/                  // 라우트 정의
+│   ├── shopRoutes.js
+│   ├── productRoutes.js
+│   └── index.js             // 라우트 통합: 여기서 router를 전부 등록하고 server.js에서는 index.js만 import
+├── controllers/             // 컨트롤러
+│   ├── userController.js
+│   └── productController.js
+├── services/                // 서비스 로직
+│   ├── userService.js
+│   └── productService.js
+├── models/                  // 데이터베이스 모델
+│   ├── userModel.js
+│   └── productModel.js
+├── middlewares/             // 공통 미들웨어
+│   ├── authMiddleware.js
+│   └── errorMiddleware.js
+├── config/                  // 설정
+│   ├── dbConfig.js
+│   └── envConfig.js
+├── utils/                   // 유틸리티 함수
+│   └── dateUtils.js
+└── package.json
+
+```
+
+### 분리방법
+**1. 라우트 분리**
+```js
+// (../routes/shopRoutes.js)
+
+// 1. Router 객체 생성
+const router = require('express').Router();
+
+
+// 2. Route의 'app'을 전부 다 'router'로 변경
+// 2-1. 사용자 목록 가져오기
+router.get('/', (req, res) => {
+  res.send('Get all users');
+});
+
+// 2-2. 사용자 생성
+router.post('/', (req, res) => {
+  res.send('Create a user');
+});
+
+// 2-3. 사용자 삭제
+router.post('/:id', (req, res) => {
+  res.send(`Delete user with ID ${req.params.id}`);
+});
+
+
+// 3. 이 라우터를 다른 파일에서 사용할 수 있도록 내보내기
+module.exports = router;
+```
+
+```js
+// (server.js)
+
+// require('./routes/userRoutes'): userRoutes 가져오기
+// app.use('/users', 라우트): 사용자 관련 라우트 등록
+// 라우트 등록할때 '/users' 라고 했므로 uerRoutes 에서는 '/users'은 생략하고 URI 작성 
+app.use('/users', require('./routes/userRoutes'));
+```
+
+**2. 컨트롤러 (Controllers)**
+<br/>
+
+**3. 서비스 (Services)**
+<br/>
+
+**4. 모델 (Models)**
+```js
+// (database.js)
+
+// 1. DB 설정
+const { MongoClient } = require('mongodb');
+const url = process.env.DB_URL;
+let connectDB = new MongoClient(url).connect();
+
+// 2. DB 연결부분 export
+module.exports = connectDB; 
+```
+
+```js
+// (server.js)
+
+// 1. dataase.js 불러오기
+let connectDB = require('./database.js');
+
+// 2. MongoClient().connect() 이걸 connectDB로 변경
+let db
+connectDB.then((client)=>{
+  console.log('DB연결성공')
+  db = client.db('forum')
+  app.listen(process.env.PORT, () => {
+    console.log('http://localhost:8080 에서 서버 실행중')
+  })
+}).catch((err)=>{
+  console.log(err)
+}) 
+```
+
+```js
+// (../routes/shopRoutes.js)
+
+// 1. dataase.js 불러오기
+let connectDB = require('./../database.js');
+
+let db
+connectDB.then((client)=>{
+  console.log('DB연결성공')
+  db = client.db('forum');
+}).catch((err)=>{
+  console.log(err)
+}); 
+
+// 2. Route의 'app'을 전부 다 'router'로 변경
+// 2-1. 사용자 목록 가져오기
+router.get('/', async (req, res) => {
+  let result = await db.collection('post').find().toArray();
+  res.render('user.ejs', {글목록: result});
+});
+```
+<br/>
+
+**5. 미들웨어 (Middleware)**
+<br/>
+
+**6. 설정 (Config)**
+<br/>
+
+**7. 유틸리티 (Utils/Helpers)**
+
 <br/>
 <br/>
 
@@ -1134,3 +1310,345 @@ app.use(session({
   })
 })) 
 ```
+<br/>
+<br/>
+
+# 환경변수
+- 유저나 컴퓨터에 따라서 좀 달라져야 하는 가변적인 변수 ex. 세션 암호화 비번, DB접속용 URL 등.
+- 환경변수들은 소스코드 공유할 때 비번 유출같은걸 막기 위해서 서버파일에 하드코딩해놓는것보다 따로 별도의 파일에 보관하는것이 좋음.
+
+## 설치
+```sh
+npm install dotenv
+```
+
+## 사용법
+1. 프로젝트 root 경로에 `.env` 파일 생성 <br/>
+    project/ <br/>
+    ├── public/ <br/>
+    │   ├── css/ <br/>
+    │   │   └── style.css <br/>
+    │   └── js/ <br/>
+    │       └── script.js <br/>
+    ├── views/ <br/>
+    │   └── index.ejs <br/>
+    ├── server.js <br/>
+    ├── `.env` <br/>
+    └── .gitignore <br/>
+<br/>
+
+2. `.env` 파일 작성
+```json
+// .env
+
+// 변수명=변수에저장할값 
+PORT   = 8080
+DB_URL = "DB URL~~~~~"
+```
+<br/>
+
+3. `server.js` 파일에서 갖다 쓰기: `process.env.변수명`
+```js
+// server.js
+
+require('dotenv').config();
+
+//  중략
+
+app.use(session({
+  secret: '암호화에 쓸 비번',
+  resave : false,
+  saveUninitialized : false,
+  cookie : { maxAge : 60 * 60 * 1000 }, 
+  store: MongoStore.create({
+    mongoUrl : process.env.DB_URL,      // process.env.변수명
+    dbName: 'forum',
+  })
+}))
+```
+
+4. Git에 업로드 안되도록 설정
+```json
+// .gitignore
+
+.env
+```
+<br/>
+<br/>
+
+# 미들웨어
+`요청(Request)과 응답(Response)사이`에 자동으로 실행되는 함수로, next()를 호출하여 다음 미들웨어로 요청을 전달하는 `체인구조`를 가지고 있음.
+
+## 주요 용도
+- 로그작성
+- 보안: 인증 및 권한 부여 작업
+- 데이터처리: 요청 데이터를 파싱하거나 유효성 검사
+- 에러처리
+
+## 사용법
+- 함수의 끝에는 `next()`를 호출해야 함. next()를 호출하지 않으면 요청이 멈추므로 반드시 호출하거나 응답을 끝내야 함.
+- `순서` 중요. 먼저 등록된 미들웨어가 먼저 실행됨.
+
+### 기본 사용
+- app.get("URL", `함수`, (요청, 응답) => { })
+    ```js
+    // 1. 간단한 미들웨어 함수 정의
+    const logger = (req, res, next) => {
+      console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+      next(); // 다음 미들웨어로 이동
+    };
+
+    // 2. app.get()의 두번째 파라미터로 함수 이름 작성 
+    app.get('/URI', logger, (req, res)=>{
+    })
+    ```
+
+- app.get("URL", `(요청, 응답, next) => {}`,  (요청, 응답) => {})
+    ```js
+    // 1. app.get()의 두번째 파라미터에 함수 바로 작성 
+    app.get('/URI',(req, res, next) => { }, (req, res)=>{
+    })
+    ```
+
+### 미들웨어 여러 개를 실행하고 싶을 때: []
+```js
+// 1. 간단한 미들웨어 함수 정의
+const mw1 = (req, res, next) => {
+  console.log('middleware1');
+};
+const mw2 = (req, res, next) => {
+  console.log('middleware2');
+};
+const mw3 = (req, res, next) => {
+  console.log('middleware3');
+};
+
+// 2. app.get()의 두번째 파라미터로 함수 이름들을 작성 
+app.get('/URI', [mw1, mw2, mw3], (req, res)=>{
+})
+```
+
+###  일괄적용: app.use()
+  - 모든 라우터에 미들웨어 실행
+    ```js
+      // 1. 간단한 미들웨어 함수 정의
+      // 1-1) 커스텀미들웨어
+      const logger = (req, res, next) => {
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+        next(); // 다음 미들웨어 또는 라우트로 이동
+      };
+
+      // 1-2) 에러 처리 미들웨어 (특수한 형태)
+      app.use((err, req, res, next) => {
+        console.error(err.stack);
+        res.status(500).send('Something broke!');
+      });
+
+      // 2. 전역 미들웨어로 적용
+      app.use(logger);
+
+      // 3. 요청 처리 핸들러
+      app.get('/', (req, res) => {
+        res.send('Hello, Middleware!');
+      });
+      ```
+
+<br/>
+
+- 일부 라우터에 미들웨어 일괄 실행
+    ```js
+    // 1. 미들웨어 정의
+    const logger = (req, res, next) => {
+      console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+      next(); // 다음 미들웨어 또는 라우트로 이동
+    };
+
+    // 2. 특정 URL에만 미들웨어 적용
+    // /admin으로 들어오거나 또는 /admin/주소, /admin/주소/주소 등 하위 URL 에서만 미들웨어 실행
+    app.use('/admin', logger);
+
+    // 3. 라우트 핸들러
+    // logger 미들웨어 실행 X
+    app.get('/', (req, res) => {
+      res.send('Home Page');
+    });
+
+    // logger 미들웨어 실행 O
+    app.get('/admin', (req, res) => {
+      res.send('Admin Dashboard');
+    });
+
+    // logger 미들웨어 실행 O
+    app.get('/admin/settings', (req, res) => {
+      res.send('Admin Settings');
+    });
+    ```
+<br/>
+<br/>
+
+# 이미지 업로드 (AWS S3)
+AWS S3은 파일 저장용 클라우드로 이미지 파일 올리는것 설정 가능.
+
+## 필요한 정보 설정
+### 1. AWS 가입
+회원 가입 및 카드 정보 등록
+
+### 2. IAM 사용자 생성 및 Access Key 발급
+서버 파일에서 코드짤 때 AWS의 `access key`가 필요하므로 사용자 생성 필요. 
+  1) [IAM](https://us-east-1.console.aws.amazon.com/iam/home?region=ap-southeast-2#/home) 접속
+  2) Access management 밑의 Users 메뉴 선택
+  3) Create user` 선택
+  4) User name`에 사용자 이름 자유롭게 입력
+  5) Permissions options는 Attach policies directly 선택
+  6) Permissions policies는 AmazonS3FullAccess 선택
+  7) Next > Create User
+  8) 생성된 유저 선택
+  9) Summary 섹션 ARN 복사하여 보관 > Create access key 선택
+  10) Local code 선택
+  11) Next
+  12) Access Key 랑 Secret access key 다운로드
+  13) Done
+
+### 3. S3 설정
+  1) [S3](https://ap-southeast-2.console.aws.amazon.com/s3/home?region=ap-southeast-2) 접속
+  2) Create bucket 선택
+  3) Bucket name 작성 (Bucket name은 남과 겹치면 안됨)
+  4) Object Ownership: ACLs disabled 선택
+  5) Block Public Access settings for this bucket: 모두 차단해제
+  6) Create bucket
+  7) 생성한 bucket 선택
+  8) Permissions 탭 선택(권한 설정: bucket policy 또는 ACL로 설정가능한데, ACL은 옛날 방식으로 bucket policy로 설정하도록 권장)
+  9) Bucket policy > Edit
+  10) 아래 코드 붙여넣기(내버킷명, 내ARN은 부분은 수정필요) > 저장
+
+      ```json
+      {
+          "Version": "2012-10-17",
+          "Statement": [
+              {
+                  "Sid": "1",
+                  "Effect": "Allow",
+                  "Principal": "*",         // 모든사람
+                  "Action": "s3:GetObject", // 자료 읽기
+                  "Resource": "arn:aws:s3:::내버킷명/*"
+              },
+              {
+                  "Sid": "2",
+                  "Effect": "Allow",
+                  "Principal": {         // 유저 명시: IAM 사용자
+                      "AWS": "내ARN"     
+                  },
+                  "Action": [
+                      "s3:PutObject",    // 자료 추가
+                      "s3:DeleteObject"  // 자료 삭제
+                  ],
+                  "Resource": "arn:aws:s3:::내버킷명/*"
+              }
+          ]
+      } 
+      ```
+
+  11) CORS(어떤 도메인에서 이 버켓에 있는 이미지를 갖다 쓸 수 있는지) 선택 > 아래 코드 붙여넣기
+      ```json
+      [
+          {
+              "AllowedHeaders": [
+                  "*"
+              ],
+              "AllowedMethods": [
+                  "PUT",   // 자료 추가
+                  "POST"   // 자료 쓰기
+              ],
+              "AllowedOrigins": [
+                  "*"      // 위의 mothods를 쓸 수 있는 사이트 주소 
+              ],
+              "ExposeHeaders": [
+                  "ETag"
+              ]
+          }
+      ] 
+      ```
+<br/>
+
+## 이미지 업로드 기능 구현
+웹페이지에서 AWS S3로 이미지 업로드하는 기능구현
+
+### 설치
+Express.js에서 파일 업로드를 처리하는 미들웨어인 `Multer` 사용
+
+```sh
+# multer: 파일업로드 처리
+# multer-s3: multer와 AWS S3를 연동하기 위한 저장소 엔진
+# @aws-sdk/client-s3:  AWS 서비스와 통신하기 위한 공식 JavaScript 라이브러리. AWS S3뿐만 아니라, EC2, DynamoDB, Lambda 등 거의 모든 AWS 서비스를 제어하고 상호작용 가능
+npm install multer multer-s3 @aws-sdk/client-s3 
+```
+
+### 코드작성
+```html
+<!-- write.ejs -->
+
+ <!-- 
+   1) <form></form> 태그에 enctype="multipart/form-data" 설정
+   2) <input type="file" name="img1" accept="image/*"> 태그 설정
+ -->
+<form class="form-box" action="/add" method="POST" enctype="multipart/form-data">
+  <h4>글쓰기</h4>
+  <input type="text" name="title">
+  <input type="text" name="content">
+  <input type="file" name="img1" accept="image/*">
+  <button type="submit">전송</button>
+</form> 
+```
+
+```js
+// server.js
+
+// 1. multer 설정
+const { S3Client } = require('@aws-sdk/client-s3');
+const multer = require('multer');
+const multerS3 = require('multer-s3');
+
+// 2. AWS S3 설정
+const s3 = new S3Client({
+  region : '내 리전',
+  credentials : {
+      accessKeyId : 'IAM에서 발급받은 액세스키',
+      secretAccessKey : 'IAM에서 발급받은 시크릿키'
+  }
+});
+
+// 3. Multer-S3 설정
+const upload = multer({
+  storage: multerS3({
+    s3: s3,
+    bucket: '내버킷이름',
+    key: function (요청, file, cb) {
+      cb(null, Date.now().toString()_file.originalname) // 업로드시 파일명
+    }
+  })
+})
+
+// 4. 파일 업로드 라우트
+// 방법1 : app.get()의 두번째 파라미터로 호출
+//   upload.single('input의name속성이름'): 1개 업로드 
+//   upload.array('input의name속성이름', 최대이미지갯수): 2개 이상 업로드
+app.post('/upload1', upload.single("img1"), (req, res)=> {
+  res.send({ message: 'File uploaded successfully', url: req.file.location });
+
+  // 파일 업로드했을 때 주소(req.file.location)를 DB에 저장해둬야 나중에 이미지 꺼내쓸 수 있음. 
+  // 여러개의 파일을 업로드한다면 document에 array형식으로 저장가능
+})
+
+// 방법2 : app.get()의 콜백함수 안에서 호출. 장점은 에러 처리 가능 
+app.post('/upload2', (req, res) => {
+    upload.single('img1')(req, res, (err)=>{
+      if (err) return 응답.send('에러남');
+      console.log('이미지 업로드 성공함~~~');
+    })
+}) 
+```
+<br/>
+<br/>
+
+!! 여기서부터!
+# AWS에 Node.js 서버 배포하기 (Elastic Beanstalk)

@@ -8,17 +8,34 @@ const passport = require('passport');                 // login: authentication m
 const LocalStrategy = require('passport-local');      // login: local strategy
 const bcrypt = require('bcrypt');                     // password encryption
 const MongoStore = require('connect-mongo');          // Automatically save login info to db
+require('dotenv').config();                           // Environment variable
+const { S3Client } = require('@aws-sdk/client-s3');   // AWS JavaScript library
+const multer = require('multer');                     // Image upload middleware
+const multerS3 = require('multer-s3');                // Connect between Multer and AWS
 
 // 1-2. Create an Express instance
 const app = express();
+
+// 1-3. custom middleware
+const today = (req, res, next) => {
+  console.log( new Date() );
+  next();
+}
+
+const userNullCheck = (req, res, next) => {
+  console.log( req.body );
+  if( !req.body.username.trim() || !req.body.password.trim() ) {
+    res.send("아이디 또는 비번은 필수값입니다");
+  } else {
+    next();
+  }
+}
 
 // 1-3. Set global middleware
 app.use(express.static(__dirname + '/public')); // Static folders
 app.use(express.json());                        // req.body
 app.use(express.urlencoded({extended:true}));   // req.body
 app.use(methodOverride('_method'));
-
-const dburl = 'mongodb+srv://@cluster0.tuq6e.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'
 
 // 1-4. passport library setting
 // session settings
@@ -28,7 +45,7 @@ app.use(session({
   saveUninitialized : false,
   cookie : { maxAge : 60 * 60 * 1000 }, // 1시간
   store: MongoStore.create({
-    mongoUrl : dburl,
+    mongoUrl : process.env.DB_URL,
     dbName: 'forum',
   })
 }))
@@ -68,18 +85,42 @@ passport.deserializeUser( async (user, done) => {
   })
 })
 
-// 1-5. Set template engine
+// Set custom middleware by router
+app.use('/list', today);
+
+// 1-6. Setting for file upload
+// Set AWS S3
+const s3 = new S3Client({
+  region: process.env.S3_REGION,
+  credentials: {
+      accessKeyId: process.env.S3_KEY,
+      secretAccessKey: process.env.S3_SECRET
+  }
+});
+
+// Multer-S3 설정
+const upload = multer({
+  storage: multerS3({
+    s3: s3,
+    bucket: process.env.S3_BUCKET,
+    key: function (요청, file, cb) {
+      cb(null, `${Date.now().toString()}_${file.originalname}`) // 업로드시 파일명
+    }
+  })
+})
+
+// 1-7. Set template engine
 app.set('view engine', 'ejs'); // EJS
 
 // 2. DB connection
 let db
-new MongoClient(dburl).connect().then((client)=>{
+new MongoClient(process.env.DB_URL).connect().then((client)=>{
   console.log('Successfully DB connected')
   db = client.db('forum')
   
   // Run a server
-  app.listen(8080, () => {
-      console.log('Server is running on http://localhost:8080');
+  app.listen(process.env.PORT, () => {
+      console.log(`Server is running on http://localhost:${process.env.PORT}`);
   })
 }).catch((err)=>{
   console.log(err);
@@ -123,13 +164,19 @@ app.get("/write", (req, res) => {
 })
 
 // Insert data
-app.post("/add", async (req, res) => {
+app.post("/add", upload.single("img1"), async (req, res) => {
+  console.log(req.file.location);
+
   try {
     if( req.body.title == '') {
       res.send("No title!");
     } else {
       // 1. Insert the data into the DB
-      await db.collection('post').insertOne(req.body);
+      await db.collection('post').insertOne({
+        title: req.body.title,
+        content: req.body.content,
+        imgURL: req.file.location
+      });
     
       // 2. Handing Request 
       res.redirect('/list'); // redirect
@@ -205,7 +252,7 @@ app.get("/login", (req, res) => {
   res.render("login.ejs");
 })
 
-app.post("/login", async (req, res, next) =>{
+app.post("/login", userNullCheck, async (req, res, next) =>{
   passport.authenticate('local', (error, user, info) => {
     if(error) return res.status(500).json(error);
     if(!user) return res.status(401).json(info.message);
@@ -220,9 +267,6 @@ app.post("/login", async (req, res, next) =>{
 });
 
 app.get("/mypage", (req, res)=>{
-  console.log(req.session);
-  console.log(req.isAuthenticated())
-
   if( req.isAuthenticated() ) {
     res.render("mypage.ejs", {user: req.user});
   } else {
@@ -237,7 +281,7 @@ app.get("/register", (req, res)=> {
 }) 
 
 // Join
-app.post("/register", async (req, res) => {
+app.post("/register", userNullCheck, async (req, res) => {
   console.log(req.body);
   if( !req.body.username.trim() || !req.body.password.trim() ) {
      return res.send("Username 또는 password를 입력해주세요");
@@ -259,4 +303,6 @@ app.post("/register", async (req, res) => {
   });
 
   res.redirect("/login");
-})
+});
+
+app.use("/board", require("./routes/boardRoutes"));
