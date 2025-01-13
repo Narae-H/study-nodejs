@@ -155,6 +155,12 @@ app.get("/list/next/:page", async (req, res) => {
   res.render('list.ejs', {글목록: result});
 })
 
+// 검색
+app.post("/list/search", async (req, res)=>{
+  let result = await db.collection("post").find({ title : { $regex: req.body.searchTerm} } ).toArray();
+  res.render("list.ejs", {글목록: result});
+});
+
 app.get("/write", (req, res) => {
   if( req.isAuthenticated() ) {
     res.render('write.ejs', {user: req.user});

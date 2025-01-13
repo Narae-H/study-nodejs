@@ -12,6 +12,11 @@
 <body class="grey-bg">
   <%- include('nav.ejs') %>
 
+  <form action="/list/search" method="POST">
+    <input class="saerch" type="text" name="searchTerm">
+    <button class="search-send" type="submit">검색</button>
+  </form>
+
   <div class="white-bg">
     <% for(let i=0; i<글목록.length; i++) { %>
       <div class="list-box">

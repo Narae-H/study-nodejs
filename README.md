@@ -378,8 +378,18 @@ DB 작업은 시간이 걸리는 I/O 작업으로 `await`을 사용(에러 발�
 
     // 조건이 필요할 때
     // db.collection('컬렉션명').find(쿼리(조건)).toArray();
+    
+    // 검색 조건 키: 
+    // { 키 : { 조건문 } }
+    //    $regex: 값이 포함된 모든 문자를 찾아라
+    //    $gt: 오른쪽 값 초과
+    //    $gte: 오른쪽 값 이상
+    //    $lt: 오른쪽 값 미만
+    //    $lte: 오른쪽 값 이하
+    //    $ne: not equal
     db.collection('컬렉션명').find({ age: { $gte: 18 } }); // age가 18 이상인 documnet만 찾음.
     ```
+  - 문제점: document가 많은 경우, document를 하나하나 다 확인해봐야 하기 때문에 find() 쓰면 느림. 속도 문제를 해결하고 싶다면 db에 index 만들어 두면 됨.
 
 ### skip()
 - 용도: 조회된 결과에서 처음 몇 개의 데이터를 건너 띔
@@ -1650,5 +1660,72 @@ app.post('/upload2', (req, res) => {
 <br/>
 <br/>
 
-!! 여기서부터!
 # AWS에 Node.js 서버 배포하기 (Elastic Beanstalk)
+AWS Elastic Beanstalk을 이용하여 서버 배포하기
+
+## DB 셋팅
+AWS 컴퓨터가 MongoDB에 접속할 수 있도록 설정
+1. [mongodb.com](Elastic Beanstalk) 접속
+2. Security > Network Access 선택
+3. IP Access List 탭 선택
+4. IP Address: 0.0.0.0 입력 (모든 IP에서 접속 가능하도록)
+
+## 코드 배포
+### 1. 코드 압축
+소스코드를 zip 파일로 압축 (node_modules는 안넣어도 됨)
+
+### 2. AWS 접속
+AWS 로그인 및 접속
+
+### 3. IAM 생성
+- `aws-elasticbeanstalk-ec2-role` 생성
+  1) [IAM](https://us-east-1.console.aws.amazon.com/iam/home?region=ap-southeast-2#/home) 접속
+  2) Access management 밑의 Roles 메뉴 선택
+  3) aws-elasticbeanstalk-ec2-role 역할이 있다면 아래는 안해도 됨.
+  4) Permissions policies는 AWSElasticBeanstalkWebTier, AWSElasticBeanstalkWorkerTier, AWSElasticBeanstalkMulticontainerDocker 선택
+  5) Next
+  6) Role Name: aws-elasticbeanstalk-ec2-role 입력
+  7) Create Role
+
+- `aws-elasticbeanstalk-service-role` 생성
+  1) [IAM](https://us-east-1.console.aws.amazon.com/iam/home?region=ap-southeast-2#/home) 접속
+  2) Access management 밑의 Roles 메뉴 선택
+  3) aws-elasticbeanstalk-service-role 역할이 있다면 아래는 안해도 됨.
+  4) Permissions policies는 AWSElasticBeanstalkEnhancedHealth, AWSElasticBeanstalkService 선택
+  5) Next
+  6) Role Name: aws-elasticbeanstalk-service-role 입력
+  7) Create Role
+
+### 4. Elastic beanstalk 생성
+환경마다 하나의 application을 실행해 둘 수 있는데 application은 프로젝트 버전 1개라고 생각하면 됨.
+1) [Elastic beanstalk](https://ap-southeast-2.console.aws.amazon.com/elasticbeanstalk/home?region=ap-southeast-2#/) 접속
+2) Create Application 선택
+3) Application Name 자유롭게 입력 ex. testwebserver
+4) Create new enviornment 선택
+5) 설정하기
+- Step1. Configure environment
+  - Environment tier: Web server enviornment
+  - Environment name: testwebserver-env
+  - Platform: Node.js
+  - Platform branch/Platform version: 자유롭게 선택
+  - Application code: Upload your code
+  - Version lable: version1.0
+  - Local file 선택 > Choose file 해서 [1.코드압축](#1-코드-압축)에서 압축한 코드 올리기
+  - Presets: Single Instance
+- Step 2. Configure service access
+  - Service role: Use an exsiting service role 선택 > aws-elasticbeanstalk-service-role 선택
+  - EC2 Instance Profile: aws-elasticbeanstalk-ec2-role 선택
+- Step 3. Set up networking, database, and tages(수정사항 없음) > Next
+- Step 4. Configure instance traffic and scaling - optional 
+  - Root Volumn Type: General Purpose3(SSD) 선택
+  - Instance Types: t2.micro 또는 t3.micro 선택
+6) Create
+
+### 5. 접속확인
+몇분 기다린 후 어쩌구.com 주소 뜨는데 거기 들어가면 접속 확인 가능
+
+<br/>
+<br/>
+
+# 검색기능 만들기
+제목 검색 기능능
