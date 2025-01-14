@@ -133,12 +133,33 @@ app.get('/', (req, res) => {
 });
 
 app.get("/list", async (req, res) => {
+  console.log("111");
   let result = await db.collection('post').find().toArray();
   res.render('list.ejs', {글목록: result});
 })
 
+// search index를 활용한 검색
+app.get("/list/search", async (req, res)=>{
+  let searchOption = [
+    {$search: {
+      index: "title_index",
+      text: { query: req.query.searchTerm, path: { wildcard: "*" }}
+    }}
+  ]
+
+  let result = await db.collection("post").aggregate(searchOption).toArray();
+  res.render("list.ejs", {글목록: result});
+});
+
+// 그냥검색
+// app.post("/list/search", async (req, res)=>{
+//   let result = await db.collection("post").find({ title : { $regex: req.body.searchTerm} } ).toArray();
+//   res.render("list.ejs", {글목록: result});
+// });
+
 // skip() && limit() 사용
 app.get("/list/:page", async (req, res) => {
+  console.log("222");
   const page = req.params.page;
   const pageSize = 5;
   
@@ -154,12 +175,6 @@ app.get("/list/next/:page", async (req, res) => {
   let result = await db.collection('post').find().skip((page-1)*pageSize).limit(pageSize).toArray();
   res.render('list.ejs', {글목록: result});
 })
-
-// 검색
-app.post("/list/search", async (req, res)=>{
-  let result = await db.collection("post").find({ title : { $regex: req.body.searchTerm} } ).toArray();
-  res.render("list.ejs", {글목록: result});
-});
 
 app.get("/write", (req, res) => {
   if( req.isAuthenticated() ) {

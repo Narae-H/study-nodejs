@@ -236,6 +236,8 @@ const app = express();
 비관계형(정규화가 필요없는) document 데이터베이스로 빠르게 데이터 입출력 가능.
 Collection을 만들고 그 안에 document를 만들어서 기록하는 형식. 자료 저장할때 JavaScript object자료형 그대로 저장 가능
 - MongoDB 구조
+  - 컬렉션(Collection): MongoDB의 데이터를 저장하는 단위로, RDB의 테이블과 유사
+  - 문서(Document): JSON 형식으로 저장된 데이터 단위로, RDB의 행(row)와 유사
 <img src="https://github.com/Narae-H/study-nodejs/blob/main/asset/readme/mongodb.png?raw=true" width="500px" alt="mongodb"/><br/>
 <small>이미지 출처: [코딩애플](https://codingapple.com/)</small>
 
@@ -304,7 +306,7 @@ new MongoClient(url).connect().then((client)=>{
 <br/> 
 <br/>
 
-## 주요 메소드
+## 메소드
 DB 작업은 시간이 걸리는 I/O 작업으로 `await`을 사용(에러 발생 가능성 줄이기).
   ```js
   // db 앞에 'await' 키워드를 붙이려면, 그걸 감싸고 있는 메소드 앞에 'async' 붙여야 함. 
@@ -347,154 +349,310 @@ DB 작업은 시간이 걸리는 I/O 작업으로 `await`을 사용(에러 발�
 > ```
 > </details>
 
-### insertOne()
-- 용도: 하나의 document를 collection에 삽입
-- 사용 예시: 
-    ```js
-    db.collection('컬렉션명').insertOne({title: "어쩌구"})
-    ```
+### 삽입
+Collection에 새로운 document를 추가
 
-### insertMany()
-- 용도: 여러 document를 한 번에 collection에 삽입
-- 사용 예시: 
-    ```js
-    ```
+- insertOne()
+  - 용도: 하나의 document를 collection에 삽입
+  - 사용 예시: 
+      ```js
+      db.collection('컬렉션명').insertOne({title: "어쩌구"})
+      ```
+<br/>
 
-### findOne()
-- 용도: 조건에 맞는 한개의 document를 조회
-- 사용 예시: 
-    ```js
-    // _id가 1234 인 document를 찾아라.
-    // MongoDB에서 자동생성되는 _id의 경우, ObjectId 객체이므로 타입 맞춰서 찾아야 함.
-    db.collection('컬렉션명').findOne({_id: new ObjectId(1234)})
-    ```
+- insertMany()
+  - 용도: 여러 document를 한 번에 collection에 삽입
+  - 사용 예시: 
+      ```js
+      db.collection('컬렉션명').insertMany([
+        { title: "첫 번째 문서" },
+        { title: "두 번째 문서" }
+      ]);      
+      ```
 
-### find()
-- 용도: 여러 collection에서 조건에 맞는 document를 조회
-- 사용 예시: 
-    ```js
-    // 조건없이 전부 가져옴
-    db.collection('컬렉션명').find().toArray();
+### 조회
+Collection에서 document를 검색하는 메소드들 [index 알아보기](#인덱스)
 
-    // 조건이 필요할 때
-    // db.collection('컬렉션명').find(쿼리(조건)).toArray();
-    
-    // 검색 조건 키: 
-    // { 키 : { 조건문 } }
-    //    $regex: 값이 포함된 모든 문자를 찾아라
-    //    $gt: 오른쪽 값 초과
-    //    $gte: 오른쪽 값 이상
-    //    $lt: 오른쪽 값 미만
-    //    $lte: 오른쪽 값 이하
-    //    $ne: not equal
-    db.collection('컬렉션명').find({ age: { $gte: 18 } }); // age가 18 이상인 documnet만 찾음.
-    ```
-  - 문제점: document가 많은 경우, document를 하나하나 다 확인해봐야 하기 때문에 find() 쓰면 느림. 속도 문제를 해결하고 싶다면 db에 index 만들어 두면 됨.
+#### 연산자
+  - 비교 연산자
+    - `$eq`: 값이 같은 문서 (Equal)
+    - `$ne`: 값이 같지 않은 문서 (Not Equal)
+    - `$gt`: 값이 큰 문서 (Greater Than)
+    - `$lt`: 값이 작은 문서 (Less Than)
+    - `$gte`, `$lte`: 값이 크거나 같음, 작거나 같음 (Greater Than Equal, Less Than Equal)
 
-### skip()
-- 용도: 조회된 결과에서 처음 몇 개의 데이터를 건너 띔
-- 사용예시:
-    ```js
-    // db.collection.find(쿼리(조건)).skip(띄어넘고 싶은 숫자);
-    db.collection('컬렉션명').find().skip(10); // 처음 10개 문서를 건너뛰고 나머지 데이터를 반환
-    ```
+  - 논리 연산자
+    - `$and`: 여러 조건이 모두 참인 문서
+    - `$or`: 여러 조건 중 하나 이상 참인 문서
+    - `$not`: 조건을 부정
 
-### limit()
-- 용도: 반환할 문서의 수를 제한
-- 사용예시:
-    ```js
-    // db.collection.find(쿼리(조건)).limit(반환할 document의 최대 개수);
-    db.users.find().limit(5); // 처음 5개의 document만 반환
-    ```
+  - 배열 연산자
+    - `$in`: 값이 배열에 포함된 문서
+    - `$all`: 배열의 모든 요소를 포함하는 문서
+
+  - 텍스트 검색
+    - `$regex`: 정규식을 사용한 검색
+
+#### 메소드
+- findOne()
+  - 용도: 조건에 맞는 한개의 document를 조회
+  - 사용 예시: 
+      ```js
+      // _id가 1234 인 document를 찾아라.
+      // MongoDB에서 자동생성되는 _id의 경우, ObjectId 객체이므로 타입 맞춰서 찾아야 함.
+      db.collection('컬렉션명').findOne({_id: new ObjectId(1234)})
+      ```
+<br/>
+
+- find()
+  - 용도: 여러 collection에서 조건에 맞는 document를 조회. [Index 알아보기](#검색기능)
+  - 사용 예시: 
+      ```js
+      // find(query, projection)
+      // query: 검색조건
+      // projection: 반환할 필드의 포함/제외 여부를 지정하는 객체
       
-  ><details>
-  >
-  ><summary><sup>- `find()`, `skip()`, `limit()`을 사용하여 페이지네이션 구현 가능.</sup></summary>
-  >
-  >```js
-  >const page = 2; // 페이지 번호
-  >const pageSize = 5; // 한 페이지에 표시할 문서 수
-  >
-  >// 방법 1: skip() && limit(): 예를들어, 1번부터 5번글까지 가져와라.
-  >// skip()은 성능 이슈가 있음. 100만 이상의 숫자를 넣으면 매우 오래 걸림.
-  >db.collection('post')
-  >  .find()                      // 조건: 모든 데이터 중
-  >  .skip((page - 1) * pageSize) // n번 부터
-  >  .limit(pageSize);            // pageSize만큼 가져와라
-  >
-  >// 방법 2: find() && limit(): 방금 본 마지막 게시물의 id부터 n번까지
-  >// id로 찾아오기때문에 속도 빠름, 페이지네이션을 숫자로 못하고, 방금 본 마지막 게시물의 id를 받아오기 위해서 >다음버튼으로 구현해야함.  
-  >db.collection('post')
-  >  .find( {_id : {$gt : 방금본 마지막게시물_id}} ) // 조건: 방금본 마지막 게시물의 _id 초과된 _id 중
-  >  .limit(pageSize);                            // pageSzie 만큼 가져와라.
-  >
-  >// 방법 3: find() && skip() && limit()
-  >db.collection('post')
-  >  .find({ age: { $gte: 18 } }) // 조건
-  >  .skip((page - 1) * pageSize) // 건너뛰기
-  >  .limit(pageSize);            // 제한
-  >```
-  ></details>
+      // 1. 조건없이 전부 가져옴
+      db.collection('컬렉션명').find().toArray();
 
-### updateOne()
-- 용도: 조건에 맞는 하나의 document를 업데이트
-- 사용 예시: 
+      // 2. 반환할 필드의 포함/제외 여부를 선택
+      // 모든 document를 가져오되, filed1과 filed2만 가져오고 _id는 제외
+      db.collection('컬렉션명').find({}, { field1: 1, field2: 1, _id: 0 }).toArray();
+
+      // 조건이 필요할 때: find({ 키 : { 조건문 } });
+      db.collection('컬렉션명').find({ age: { $gte: 18 } }); // age가 18 이상인 documnet만 찾음.
+      ```
+<br/>
+
+- skip()
+  - 용도: 조회된 결과에서 일부 document를 건너 띔
+  - 사용예시:
+      ```js
+      // db.collection.find(쿼리(조건)).skip(띄어넘고 싶은 document 개수);
+      db.collection('컬렉션명').find().skip(10); // 처음 10개 문서를 건너뛰고 나머지 데이터를 반환
+      ```
+
+- limit()
+  - 용도: 반환할 문서의 수를 제한
+  - 사용예시:
+      ```js
+      // db.collection.find(쿼리(조건)).limit(반환할 document의 최대 개수);
+      db.users.find().limit(5); // 처음 5개의 document만 반환
+      ```
+- countDocuments()
+  - 용도: 조건에 맞는 document의 개수를 반환
+  - 사용 예시: 
     ```js
-    // collection('컬렉션명').updateOne({찾을조건}, { $set: { 업데이트 할 document } })
+    db.collection('컬렉션명').countDocuments({ age: { $gte: 18 } });
+    ```      
+><details>
+>
+><summary>- `find()`, `skip()`, `limit()`을 사용하여 페이지네이션 구현</summary>
+>
+>```js
+>const page = 2; // 페이지 번호
+>const pageSize = 5; // 한 페이지에 표시할 문서 수
+>
+>// 방법 1: skip() && limit(): 예를들어, 1번부터 5번글까지 가져와라.
+>// skip()은 성능 이슈가 있음. 100만 이상의 숫자를 넣으면 매우 오래 걸림.
+>db.collection('post')
+>  .find()                      // 조건: 모든 데이터 중
+>  .skip((page - 1) * pageSize) // n번 부터
+>  .limit(pageSize);            // pageSize만큼 가져와라
+>
+>// 방법 2: find() && limit(): 방금 본 마지막 게시물의 id부터 n번까지
+>// id로 찾아오기때문에 속도 빠름, 페이지네이션을 숫자로 못하고, 방금 본 마지막 게시물의 id를 받아오기 위해서 >다음버튼으로 구현해야함.  
+>db.collection('post')
+>  .find( {_id : {$gt : 방금본 마지막게시물_id}} ) // 조건: 방금본 마지막 게시물의 _id 초과된 _id 중
+>  .limit(pageSize);                            // pageSzie 만큼 가져와라.
+>
+>// 방법 3: find() && skip() && limit()
+>db.collection('post')
+>  .find({ age: { $gte: 18 } }) // 조건
+>  .skip((page - 1) * pageSize) // 건너뛰기
+>  .limit(pageSize);            // 제한
+>```
+></details>
 
-    // 업데이트 할 데이터 키: 
-    //    $set: 덮어써라
-    //    $inc: +/- 연산을 해라
-    //    $mul: 곱셈 연산을해라
-    //    $unset: 필드값을 삭제해라
-    db.collection('컬렉션명').updateOne({ name: 'Alice' }, { $set: { age: 26 } });
+### 수정
+기존 document를 수정
+
+- updateOne()
+  - 용도: 조건에 맞는 하나의 document를 업데이트
+  - 사용 예시: 
+      ```js
+      // collection('컬렉션명').updateOne({찾을조건}, { $set: { 업데이트 할 document } })
+
+      // 업데이트 할 데이터 키: 
+      //    $set: 덮어써라
+      //    $inc: +/- 연산을 해라
+      //    $mul: 곱셈 연산을해라
+      //    $unset: 필드값을 삭제해라
+      db.collection('컬렉션명').updateOne({ name: 'Alice' }, { $set: { age: 26 } });
+    ```
+<br/>
+
+- updateMany()
+  - 용도: 조건에 맞는 여러 개의 document를 업데이트
+  - 사용 예시: 
+      ```js
+      // collection('컬렉션명').updateMany({찾을조건}, { $set: { 업데이트 할 document } })
+      db.collection('컬렉션명').updateMany(
+        { title : '멍청아' },
+        { $set: { title : '착한친구야' } }
+      )
+      ```
+<br/>
+
+- replaceOne()
+  - 용도: 조건에 맞는 한 개의 document를 완전히 교체
+  - 사용 예시: 
+    ```js
+    db.collection('컬렉션명').replaceOne({ _id: "1234" }, { title: "새 문서" });
     ```
 
-### updateMany()
-- 용도: 조건에 맞는 여러 개의 document를 업데이트
-- 사용 예시: 
-    ```js
-    // collection('컬렉션명').updateMany({찾을조건}, { $set: { 업데이트 할 document } })
+### 삭제
+document 삭제
+- deleteOne()
+  - 용도: 조건에 맞는 한 개의 document를 삭제
+  - 사용 예시: 
+      ```js
+      db.collection('컬렉션명').deleteOne(
+        { _id: new ObjectId(req.body._id) }
+      )
+      ```
+<br/>
 
-    // 검색 조건 키: 
-    // { like : { 조건문 } }
-    //    $gt: 오른쪽 값 초과
-    //    $gte: 오른쪽 값 이상
-    //    $lt: 오른쪽 값 미만
-    //    $lte: 오른쪽 값 이하
-    //    $ne: not equal
-    db.collection('컬렉션명').updateMany(
-      { title : '멍청아' },
-      { $set: { title : '착한친구야' } }
-    )
+- deleteMany()
+  - 용도: 조건에 맞는 여러 개의 document를 삭제
+  - 사용 예시: 
+  ```js
+  db.collection('컬렉션명').deleteMany({ active: false });
+  ```
+
+### 기타
+- sort()
+  - 용도: document를 특정필드로 정렬
+  - 사용 예시: 
+  ```js
+  db.collection('컬렉션명').find().sort({ age: -1 });
+  ```
+
+## 인덱스
+document가 많은 경우 find()로만 검색을 한다면 모든 document를 하나하나 다 확인해봐야 하기 때문에 속도가 느림. 인덱스는 데이터베이스에서 데이터 검색 성능을 높이기 위해 사용되는 구조로, 책의 목차와 유사한 역할(기본적으로 `_id` 필드는 인덱스가 자동 생성됨)
+> <details>
+> 
+> <summary>Index의 동작원리</summary>
+> 
+> Index는 검색 알고리즘을 이용하여 게시물을 빠르게 찾아주는데, 이게 조건이 `미리 정렬`되어 있어야 함.
+> document 들을 복사해서 미리 정렬해두면 되는데 정렬된 컬렉션 복사본을 index라고 부름.
+>
+> 1. 인덱스가 없는 경우(Collection Scan)
+> 인덱스가 없는 경우, 모든 문서를 순차적으로 검사하여 조건에 맞는 데이터를 찾음
+> - 장점: Index 생성을 위한 추가적인 저장 공간을 사용하지 않음.
+> - 단점: 문서가 많을수록 검색속도가 느려짐.
+>
+> 2. 인덱스를 사용한 검색(Index Scan)
+> 인덱스를 활용하여 검색을 함
+> - 장점: 정렬된 인덱스를 빠르게 탐색하여 문서를 조회하고 필요한 데이터만 조회하여 성능 향상
+> - 단점: Index 생성을 위한 추가적인 저장 공간 필요하고, 필드크기와 문서에 따라 공간 사용량 증가. 데이터를 삽입하거나 수정할 때, 관련 인덱스도 업데이트되어야 하므로 약간의 성능 저하 발생. 띄어쓰기로 구분되는 단어밖에 검색 못함.
+> </details>
+
+### 인덱스 종류
+#### 단일 필드 인덱스
+<br/>
+
+#### Search Index
+MongoDB에서 `복합쿼리, 유사어, 단어 근접도` 등 고급 검색을 하기 위한 인덱스.
+
+- 동작원리
+1) Index를 만들 때 document에 있는 문장들을 가져와서 조사나 쓸데없는 불용어(은, 는, 이, 가 등)들을 제거하고 단어(또는 토큰) 을 추출
+2) 이 단어들이 어떤 documnet에 등장했는지 그 document id 같은걸 함께 단어 옆에 기재하여 역색인 생성
+    - document
+      ```json
+      // document 예시
+      Doc1: "MongoDB is a NoSQL database."
+      Doc2: "MongoDB supports full-text search."
+      ```
+    - 생성된 역색인 <br/>
+
+      | **단어/토큰**    | **Document _id**    |
+      |-----------------|---------------------|
+      | MongoDB         | [Doc1, Doc2]        |
+      | is              | [Doc1]              |
+      | a               | [Doc1]              |
+      | NoSQL           | [Doc1]              |
+      | database        | [Doc1]              |
+      | supports        | [Doc2]              |
+      | full-text       | [Doc2]              |
+      | search          | [Doc2]              |
+3. 어떤 단어를 검색했을때 역색인 테이블을 이용하여 _id를 빠르게 찾을 수 있음.
+<br/>
+
+### 인덱스 생성 방법
+
+#### 단일 필드 인덱스 생성
+1. MongoDB 접속 > Collection 선택
+2. Indexs 탭 > Create Index 선택
+3. 어떤 필드를 인덱스로 만들지 정하기
+    ```json
+    // document 키 이름: 타입(문자면 text, 숫자면 1(오름차순) 또는 -1(내림차순))
+    {
+      title: "text"
+    }
     ```
+4. confirm
 
-### replaceOne()
-- 용도: 조건에 맞는 한 개의 document를 완전히 교체
-- 사용 예시: 
+#### Search Index 생성
+1. MongoDB 접속 > Collection 선택
+2. Atlas Search 탭 선택
+3. Create Search Index 선택
+4. 아래 내용 참고하여 입력
+  - Index Name: title_index
+  - Database and Collection: forum > post
+5. Next
+6. Refine Your Index 선택
+7. 아래 내용 참고하여 입력/선택
+  - Dynamic Mapping: disabled
+  - Index Analyzer: Lucene.Korean
+  - Search Analyzer: Lucene.Korean
+  - field Mappings
+    - Filed Name: title
+    - Data Type: String
+8. Save Changes > Create Search Index
+9. 테스트: 인덱스 옆의 QUERY 버튼 눌러서 검색 테스트 가능 (검색결과가 더 매칭이 잘 될 수록 Score 높아짐)
+<br/>
+
+### 인덱스를 활용하여 검색
+.find() 대신에 .aggregate() 사용
 ```js
+// (server.js)
+
+app.get('/search', async (요청, 응답) => {
+let 검색조건 = [
+  {$search : {
+    index : '사용할 인덱스 이름',
+    text : { query : '검색어', path : '검색할 필드이름' }
+  }},
+  { $sort : { _id : 1 } },            // _id로 오름차순
+  { $limit : 10 },                    // 10개만 가져와라
+  { $project : { 제목 : 1, _id : 0 } } // 원하는 필드값만 가져와라: '제목' 필드는 가져오고 '_id' 필드는 안가져옴
+
+  let result = await db.collection('post').aggregate(검색조건).toArray()
+  응답.render('search.ejs', { 글목록 : result })
+}) 
 ```
 
-### deleteOne()
-- 용도: 조건에 맞는 한 개의 document를 삭제
-- 사용 예시: 
-    ```js
-    db.collection('컬렉션명').deleteOne(
-      { _id: new ObjectId(req.body._id) }
-    )
-    ```
+### 성능평가/실행계획 확인
+쿼리가 인덱스를 사용하는지 확인하려면 explain() 메서드를 사용
+- COLLSCAN: 컬렉션 전체를 스캔(인덱스를 사용하지 않음)
+- TEXT_MATCH/IXSCAN: 인덱스 스캔(인덱스를 사용함)
+  ```js
+  // explain('executionStats')
+  db.collection().find( { title : '안녕' } ).explain('executionStats')
+  db.collection().find( { $text : { $search: '안녕' } } ).explain('executionStats')
+  ```
 
-### deleteMany()
-- 용도: 조건에 맞는 여러 개의 document를 삭제
-- 사용 예시: 
-```js
-```
-
-### countDocuments()
-- 용도: 조건에 맞는 document의 개수를 반환
-- 사용 예시: 
-```js
-```
 <br/>
 <br/>
 
@@ -1726,6 +1884,3 @@ AWS 로그인 및 접속
 
 <br/>
 <br/>
-
-# 검색기능 만들기
-제목 검색 기능능
