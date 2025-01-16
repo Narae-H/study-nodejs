@@ -12,6 +12,7 @@ require('dotenv').config();                           // Environment variable
 const { S3Client } = require('@aws-sdk/client-s3');   // AWS JavaScript library
 const multer = require('multer');                     // Image upload middleware
 const multerS3 = require('multer-s3');                // Connect between Multer and AWS
+const { red } = require('gulp-cli/lib/shared/ansi');
 
 // 1-2. Create an Express instance
 const app = express();
@@ -135,7 +136,11 @@ app.get('/', (req, res) => {
 app.get("/list", async (req, res) => {
   console.log("111");
   let result = await db.collection('post').find().toArray();
-  res.render('list.ejs', {글목록: result});
+  console.log(result[12].user);
+  console.log(req.user._id);
+  console.log("-------------");
+
+  res.render('list.ejs', {글목록: result, user: req.user});
 })
 
 // search index를 활용한 검색
@@ -186,8 +191,6 @@ app.get("/write", (req, res) => {
 
 // Insert data
 app.post("/add", upload.single("img1"), async (req, res) => {
-  console.log(req.file.location);
-
   try {
     if( req.body.title == '') {
       res.send("No title!");
@@ -196,7 +199,9 @@ app.post("/add", upload.single("img1"), async (req, res) => {
       await db.collection('post').insertOne({
         title: req.body.title,
         content: req.body.content,
-        imgURL: req.file.location
+        img: req.file? req.file.location : '',
+        user: req.user._id,
+        username: req.user.username // RDB와 다르게 user, username 전부 다 저장
       });
     
       // 2. Handing Request 
@@ -220,7 +225,12 @@ app.get("/detail/:id", async (req, res) => {
     if( result == null) {
       res.status(404).send("The item doesn't exsit");
     } else {
-      res.render("detail.ejs", result);
+      let reformData = {
+        title: result.title,
+        content: result.content, 
+        imgURL: result.imgURL
+      }
+      res.render("detail.ejs", reformData);
     }
     
   } catch(e) {
@@ -230,10 +240,18 @@ app.get("/detail/:id", async (req, res) => {
 
 app.get("/edit/:id", async (req, res) => {
   // 1. Find data from DB
-  let result = await db.collection('post').findOne({_id: new ObjectId(req.params.id)});
-  
+  let result = await db.collection('post').findOne(
+    { _id: new ObjectId(req.params.id),
+      user: req.user? new ObjectId(req.user._id) : ""
+    }
+  );
+
   // 2. Render
-  res.render("edit.ejs", result);
+  if( req.user && result) {
+    res.render("edit.ejs", result);
+  } else {
+    res.send("수정할 수 없는 게시물입니다");
+  }
 })
 
 // Update data
@@ -262,11 +280,14 @@ app.put("/edit/:id", async (req, res) => {
 
 // delete
 app.delete("/delete", async (req, res)=> {
-  await db.collection('post').deleteOne(
-    { _id: new ObjectId(req.body._id) }
+
+  const result = await db.collection('post').deleteOne(
+    { _id: new ObjectId(req.body._id)
+      ,user: req.user? new ObjectId(req.user._id) : ""
+     }
   )
 
-  res.send("삭제완료");
+  res.send(result);
 })
 
 app.get("/login", (req, res) => {

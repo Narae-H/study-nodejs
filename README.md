@@ -233,13 +233,29 @@ const app = express();
 <br/>
 
 # MongoDB
-비관계형(정규화가 필요없는) document 데이터베이스로 빠르게 데이터 입출력 가능.
+`비관계형`(정규화가 필요없는) document 데이터베이스로 `빠르게` 데이터 입출력 가능.
 Collection을 만들고 그 안에 document를 만들어서 기록하는 형식. 자료 저장할때 JavaScript object자료형 그대로 저장 가능
 - MongoDB 구조
   - 컬렉션(Collection): MongoDB의 데이터를 저장하는 단위로, RDB의 테이블과 유사
   - 문서(Document): JSON 형식으로 저장된 데이터 단위로, RDB의 행(row)와 유사
 <img src="https://github.com/Narae-H/study-nodejs/blob/main/asset/readme/mongodb.png?raw=true" width="500px" alt="mongodb"/><br/>
 <small>이미지 출처: [코딩애플](https://codingapple.com/)</small>
+
+> <details>
+> <summary> 정규화DB VS 비정규화DB</summary>
+> 
+> | 항목              | **NoSQL Database**                                  | **RDB**                                              |
+> |------------------|---------------------------------|------------------------------------------------------|
+> | **간략한 정의**    | 비관계형 데이터베이스로, 스키마가 자유롭고 확장성이 뛰어남.     | 관계형 데이터베이스로, 데이터를 테이블 형태로 저장하고 정규화하여 규칙이 있음. |
+> | **특징**          | - 유연한 스키마<br>- 수평적 확장성<br>- `높은 성능(빠름)`<br>- 비정형 데이터 저장 | - 정형화된 스키마<br>- 수직적 확장성<br>- `데이터 무결성` 보장<br>- 트랜잭션 지원 |
+> | **데이터 모델**    | 문서(Document), 키-값(Key-Value), 그래프(Graph), 컬럼(Column) 등  | 테이블 형식으로 데이터 저장 (행(Row)과 열(Column))    |
+> | **확장성**        | 수평적 확장성(서버 추가로 확장 가능)                        | 수직적 확장성(서버 성능을 높여서 확장)                    |
+> | **적합한 사용 사례**| 대용량 데이터 처리, 빠른 읽기/쓰기, 스키마가 자주 변하는 경우   | 데이터 무결성이 중요한 경우, 복잡한 관계 모델링이 필요한 경우 |
+> | **예시 DB 종류**   | MongoDB, Cassandra, CouchDB, Redis, DynamoDB               | MySQL, PostgreSQL, Oracle, SQL Server                  |
+> | **ex. 글작성**    | document 데이터: <br/> - 글 아이디<br/> - 글 제목<br/> - 글 내용<br/> - 작성자 아이디<br/> - `작성자 이름`<br/> | row 데이터: <br/> - 글 아이디 <br/> - 글 제목 <br/> - 글 내용 <br/> - 작성자 아이디<br/><br/> | 
+> | | - 데이터 조회 시에 하나의 document를 바로 가져오므로 빠름. <br/> - 작성자 이름이 변경되었을 경우, 데이터 무결서 보장 안됨.<br/> - 해결방법: 조회를 두번(글 데이터 + 유저정보 데이터) 하면됨. | - 데이터 조회 시에 여러 테이블을 조인하므로 느림 <br/> - 작성자 이름이 변경되어도 join하여 가져오므로 데이터 무결성 보장 <br/> - 쿼리 한방에 데이터 조회 가능| 
+> </details>
+
 
 ## 설치 및 설정
 ### 설치
@@ -350,7 +366,7 @@ DB 작업은 시간이 걸리는 I/O 작업으로 `await`을 사용(에러 발�
 > </details>
 
 ### 삽입
-Collection에 새로운 document를 추가
+Collection에 새로운 document를 추가. 
 
 - insertOne()
   - 용도: 하나의 document를 collection에 삽입
@@ -1884,3 +1900,22 @@ AWS 로그인 및 접속
 
 <br/>
 <br/>
+
+
+
+# 댓글기능 만들기
+댓글기능은 게시물 document에 넣지 말자.
+이유
+1. array는 원하는 항목 수정/삭제 어려움
+2. document 1개 용량제한은 16MB
+3. array는 일부만 가져올 수 없음.
+=> 결론: "comment"라는 collection을만들어서 document 저장하기
+```
+_id:
+comment:
+postId:
+``` 
+
+document끼리 종속 관계 표현할 수 있음.
+
+=> 직접 만들어보자.

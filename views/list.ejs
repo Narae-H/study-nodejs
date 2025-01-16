@@ -23,7 +23,9 @@
         <h4>
           <a href="/detail/<%= 글목록[i]._id %>"><%= 글목록[i].title %></a>
           <a href="/edit/<%= 글목록[i]._id %>">✏️</a>
-          <span class="delete" data-id="<%= 글목록[i]._id %>" style="cursor: pointer;">🗑️</span>
+          <% if( 글목록[i].user?.toString ==  user?._id.toString) { %>
+            <span class="delete" data-id="<%= 글목록[i]._id %>" style="cursor: pointer;">🗑️</span>
+          <% } %>
         </h4>
         <p><%= 글목록[i].content %></p>
       </div>
@@ -40,10 +42,12 @@
       })
       .then( (r) => r.text() )
       .then( (r) => { 
-        console.log(r);
-
-        // 새로고침 없이 그냥 안보이게만 하기 (어차피 데이터는 삭제되었음)
-        e.target.parentElement.parentElement.style.display = 'none';
+        const rJSON = JSON.parse(r);
+        
+        if( rJSON.deletedCount > 0 ){
+          // 새로고침 없이 그냥 안보이게만 하기 (어차피 데이터는 삭제되었음)
+          e.target.parentElement.parentElement.style.display = 'none';
+        }
       }) 
     })
   })
