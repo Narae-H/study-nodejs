@@ -1901,21 +1901,71 @@ AWS 로그인 및 접속
 <br/>
 <br/>
 
+# 기타
+## Node.js+Express 서버와 React 연동
+- Node.js+Express: Back-end
+- React: Front-end
 
+### 설정 방법
+1. [Node.js 프로젝트 생성](#설치-및-개발환경-설정)
+2. [리액트 프로젝트 생성](https://github.com/Narae-H/study-react/tree/main/0-overview#%EC%84%A4%EC%B9%98-%EB%B0%8F-%EA%B0%9C%EB%B0%9C%ED%99%98%EA%B2%BD-%EC%85%8B%ED%8C%85)
+3. 생성된 리액트 프로젝트 폴더를 Node.js 프로젝트 폴더 안으로 이동
+    `nodejs_project` <br/>
+    ├── node_modules <br/>
+    ├── `react_project` <br/>
+    ├── public <br/>
+    ├── routes <br/>
+    ├── views <br/>
+    └── .env <br/>
+    └── .gitignore <br/>
+    └── index.html <br/>
+    └── package-lock.json <br/>
+    └── package.json <br/>
+    └── server.js <br/>
+<br/>
 
-# 댓글기능 만들기
-댓글기능은 게시물 document에 넣지 말자.
-이유
-1. array는 원하는 항목 수정/삭제 어려움
-2. document 1개 용량제한은 16MB
-3. array는 일부만 가져올 수 없음.
-=> 결론: "comment"라는 collection을만들어서 document 저장하기
+### 리액트로 만든 HTML 전송하는 법
+Node.js 서버에다가 "누군가 메인페이지로 접속하면 리액트로 build한 index.html 보여주세요" 라고 하면 됨.
+```js
+// (Nodejs프로젝트의 server.js)
+
+// 1. React 빌드 결과물에 있는 모든 정적 파일을 클라이언트가 요청할 때 마다 제공공
+// express.static(): xpress에서 정적 파일(HTML, CSS, JavaScript 등)을 제공하기 위해 사용
+app.use(express.static(path.join(__dirname, 'react-project/build')));
+
+// 사용자가 브라우저에서 기본경로(/)로 접근할 경우, React의 index.html파일 반환
+app.get('/', function (req, res) {
+  res.sendFile(path.join(__dirname, '/react-project/build/index.html'));
+});
 ```
-_id:
-comment:
-postId:
-``` 
 
-document끼리 종속 관계 표현할 수 있음.
+### 라우팅
+서버에서 라우팅을 담당해줘도 되고 리액트에서 라우팅을 담당해줘도 됨.
+### React에서 담당하는 경우
+1. React 프로젝트에서 react-router-dom 설치하여 라우팅 코드 개발
+2. Node 서버에다가 리액트가 라우팅 할것이라는걸 server.js에게 알려줌.
+```js
+// (server.js)
 
-=> 직접 만들어보자.
+// 어떤 요청이 들어와도 리액트 프로젝트를 보여줘라.
+// 주의사항: 이 코드는 항상 가장 하단에 놓여야 함.
+app.get('*', function (요청, 응답) {
+  응답.sendFile(path.join(__dirname, '/react-project/build/index.html'));
+});
+```
+
+### Ajax 요청
+아래의 코드를 넣어야 리액트와 Node.js 서버간 Ajax 통신 잘됨.
+
+1. Node서버에 cors 설치
+```sh
+npm install cors
+```
+
+2. Node서버 코드 수정
+```js
+// (server.js)
+app.use(express.json());    // 유저가 보낸 array/object 데이터를 출력해보기 위해 필요
+var cors = require('cors'); // cors는 다른 도메인주소끼리 ajax 요청 주고받을 때 필요
+app.use(cors());
+```
