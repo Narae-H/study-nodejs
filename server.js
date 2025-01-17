@@ -12,7 +12,7 @@ require('dotenv').config();                           // Environment variable
 const { S3Client } = require('@aws-sdk/client-s3');   // AWS JavaScript library
 const multer = require('multer');                     // Image upload middleware
 const multerS3 = require('multer-s3');                // Connect between Multer and AWS
-const { red } = require('gulp-cli/lib/shared/ansi');
+// const { red } = require('gulp-cli/lib/shared/ansi');
 
 // 1-2. Create an Express instance
 const app = express();
@@ -136,10 +136,6 @@ app.get('/', (req, res) => {
 app.get("/list", async (req, res) => {
   console.log("111");
   let result = await db.collection('post').find().toArray();
-  console.log(result[12].user);
-  console.log(req.user._id);
-  console.log("-------------");
-
   res.render('list.ejs', {글목록: result, user: req.user});
 })
 
@@ -220,17 +216,19 @@ app.get("/detail/:id", async (req, res) => {
 
     // 2. Find data from DB
     let result = await db.collection('post').findOne({_id: new ObjectId(id)});
+    let commentList = await db.collection('comment').find( { postId: id }).toArray();
     
     // 3. Rendering
     if( result == null) {
       res.status(404).send("The item doesn't exsit");
     } else {
-      let reformData = {
+      let postData = {
         title: result.title,
-        content: result.content, 
-        imgURL: result.imgURL
+        content: result.content,
+        postId: id, 
+        imgURL: result.imgURL,
       }
-      res.render("detail.ejs", reformData);
+      res.render("detail.ejs", {postData: postData, commentList: commentList});
     }
     
   } catch(e) {
@@ -346,5 +344,23 @@ app.post("/register", userNullCheck, async (req, res) => {
 
   res.redirect("/login");
 });
+
+// 댓글 입력
+app.post("/comment/write", async (req, res) => {
+  try {
+    let result = await db.collection("comment").insertOne({
+      postId: req.body.postId,
+      userId: req.user._id,
+      username: req.user.username,
+      comment: req.body.comment,
+      date: new Date()
+    })
+    res.redirect("back");
+
+  } catch (e) {
+    console.log(e);
+    res.status(500).send("failed");
+  }
+})
 
 app.use("/board", require("./routes/boardRoutes"));

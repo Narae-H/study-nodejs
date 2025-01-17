@@ -13,12 +13,49 @@
   <%- include('nav.ejs') %>
   
   <div class="detail-bg">
-    <h4><%= title %></h4>
-    <p><%= content %></p>
-    <% if( imgURL ) { %>
-      <img src="<%= imgURL%>" width="500px" alt="이미지"/>
+    <h4><%= postData.title %></h4>
+    <p><%= postData.content %></p>
+    <% if( postData.imgURL ) { %>
+      <img src="<%= postData.imgURL%>" width="500px" alt="이미지"/>
     <% } %>
   </div> 
+
+  <div>
+    <h3>Comment</h3>
+    <div class="list">
+      <% commentList.forEach( (commentObj) => { %>
+      <p> <strong><%= commentObj.username %></strong> <span><%= commentObj.comment %> </span> </p>
+      <% }) %>
+    </div>
+    <form action="/comment/write" method="POST">
+      <input type="text" name="postId" value="<%= postData.postId %>" hidden>
+      <input type="textarea" name="comment">
+      <button type="submit" id="commentBtn">작성</button>
+    </form>
+  </div>
+
+
+<script>
+// document.querySelector("#commentBtn").addEventListener("click", (e) => {
+//   let comment = document.querySelector("#comment").value;
+  
+//   fetch("/comment/write", {
+//     method: 'POST',
+//     headers: { 'Content-Type' : 'application/json' },
+//     body: JSON.stringify({ 
+//       postId: document.querySelector("body").dataset.postid,
+//       comment: comment,
+//       date: new Date()
+//     })
+//   })
+//   .then( r => r.text )
+//   .then( (r)=> {
+//     let childEle = document.createElement("div").appendChild(document.createTextNode(comment));
+//     document.querySelector("#comment").value = "";
+//     document.querySelector(".list").appendChild(childEle);
+//   })
+// });
+</script>
 
 </body>
 </html>

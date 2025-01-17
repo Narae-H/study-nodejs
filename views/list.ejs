@@ -23,7 +23,7 @@
         <h4>
           <a href="/detail/<%= 글목록[i]._id %>"><%= 글목록[i].title %></a>
           <a href="/edit/<%= 글목록[i]._id %>">✏️</a>
-          <% if( 글목록[i].user?.toString ==  user?._id.toString) { %>
+          <% if( user != null && (글목록[i].user?.toString ==  user?._id.toString) ) { %>
             <span class="delete" data-id="<%= 글목록[i]._id %>" style="cursor: pointer;">🗑️</span>
           <% } %>
         </h4>
