@@ -26,6 +26,7 @@
           <% if( user != null && (글목록[i].user?.toString ==  user?._id.toString) ) { %>
             <span class="delete" data-id="<%= 글목록[i]._id %>" style="cursor: pointer;">🗑️</span>
           <% } %>
+          <a href="/chat/<%= 글목록[i]._id %>">채팅하기</a>
         </h4>
         <p><%= 글목록[i].content %></p>
       </div>

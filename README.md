@@ -1969,3 +1969,13 @@ app.use(express.json());    // 유저가 보낸 array/object 데이터를 출력
 var cors = require('cors'); // cors는 다른 도메인주소끼리 ajax 요청 주고받을 때 필요
 app.use(cors());
 ```
+
+# 채팅방
+
+1. HTTP 요청
+
+2. Server Sent Event
+서버에서 계속 데이터 전송이 필요할 경우
+
+3. Websocket
+실시간 서버-유저 양방향 통신 ex. 채팅기능

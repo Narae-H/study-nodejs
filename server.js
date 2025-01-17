@@ -2,7 +2,6 @@
 // 1-1. Import modules
 const express = require('express');                   // express library
 const methodOverride = require('method-override');    // HTTP methods
-const { MongoClient, ObjectId } = require('mongodb'); // DB
 const session = require('express-session');           // login: session management middleware
 const passport = require('passport');                 // login: authentication middleware
 const LocalStrategy = require('passport-local');      // login: local strategy
@@ -52,21 +51,6 @@ app.use(session({
 }))
 app.use(passport.initialize())
 app.use(passport.session()); 
-
-// Passport authentication strategy
-passport.use(new LocalStrategy(async (입력한아이디, 입력한비번, cb) => {
-  let result = await db.collection('user').findOne({ username : 입력한아이디});
-
-  if (!result) {
-    return cb(null, false, { message: '아이디 DB에 없음' })
-  }
-
-  if (await bcrypt.compare(입력한비번, result.password)) {
-    return cb(null, result); // 로그인 성공
-  } else {
-    return cb(null, false, { message: '비번불일치' });
-  }
-}));
 
 // When login is successful, save the data to the session
 passport.serializeUser((user, done) => {
@@ -363,4 +347,6 @@ app.post("/comment/write", async (req, res) => {
   }
 })
 
+
 app.use("/board", require("./routes/boardRoutes"));
+app.use("/chat", require("./routes/chatRoutes"));
