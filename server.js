@@ -2,6 +2,7 @@
 // 1-1. Import modules
 const express = require('express');                   // express library
 const methodOverride = require('method-override');    // HTTP methods
+const { MongoClient, ObjectId } = require('mongodb'); // DB
 const session = require('express-session');           // login: session management middleware
 const passport = require('passport');                 // login: authentication middleware
 const LocalStrategy = require('passport-local');      // login: local strategy
@@ -20,6 +21,14 @@ const app = express();
 const today = (req, res, next) => {
   console.log( new Date() );
   next();
+}
+
+const isLoggedin = (req, res, next) => {
+  if( req.isAuthenticated() ) {
+    next();
+  } else {
+    res.redirect("/login");
+  }
 }
 
 const userNullCheck = (req, res, next) => {
@@ -49,8 +58,23 @@ app.use(session({
     dbName: 'forum',
   })
 }))
-app.use(passport.initialize())
+app.use(passport.initialize());
 app.use(passport.session()); 
+
+// LocalStrategy 설정: 아이디/비번이 DB와 일치하는지 전략을 생성하는 객체
+passport.use(new LocalStrategy(async (입력한아이디, 입력한비번, cb) => {
+  let result = await db.collection('user').findOne({ username : 입력한아이디})
+  if (!result) {
+    return cb(null, false, { message: '아이디 DB에 없음' })
+  }
+
+  // bcrypt.compare()를 이용하여 입력한비번과 db의 비번을 비교
+  if ( await bcrypt.compare(입력한비번, result.password)) {
+    return cb(null, result); // 로그인 성공
+  } else {
+    return cb(null, false, { message: '비번불일치' });
+  }
+}));
 
 // When login is successful, save the data to the session
 passport.serializeUser((user, done) => {
@@ -98,6 +122,20 @@ const upload = multer({
 app.set('view engine', 'ejs'); // EJS
 
 // 2. DB connection
+// let connectDB = require('./models/mongodb');
+// let db
+// connectDB.then((client)=>{
+//   console.log('Successfully DB connected');
+//   db = client.db('forum');
+  
+//   // Run a server
+//   app.listen(process.env.PORT, () => {
+//       console.log(`Server is running on http://localhost:${process.env.PORT}`);
+//   })
+// }).catch((err)=>{
+//   console.log(err);
+// });
+// const { MongoClient } = require('mongodb');
 let db
 new MongoClient(process.env.DB_URL).connect().then((client)=>{
   console.log('Successfully DB connected')
@@ -118,7 +156,6 @@ app.get('/', (req, res) => {
 });
 
 app.get("/list", async (req, res) => {
-  console.log("111");
   let result = await db.collection('post').find().toArray();
   res.render('list.ejs', {글목록: result, user: req.user});
 })
@@ -161,12 +198,8 @@ app.get("/list/next/:page", async (req, res) => {
   res.render('list.ejs', {글목록: result});
 })
 
-app.get("/write", (req, res) => {
-  if( req.isAuthenticated() ) {
-    res.render('write.ejs', {user: req.user});
-  } else {
-    res.redirect("/login")
-  }
+app.get("/write", isLoggedin, (req, res) => {
+  res.render('write.ejs', {user: req.user});
 })
 
 // Insert data
@@ -193,7 +226,8 @@ app.post("/add", upload.single("img1"), async (req, res) => {
   }
 })
 
-app.get("/detail/:id", async (req, res) => {
+app.get("/post/detail/:id", async (req, res) => {
+  console.log("!!!!!!!!!!!!!11");
   try {
     // 1. Get URL parameter
     let id = req.params.id;
@@ -207,11 +241,16 @@ app.get("/detail/:id", async (req, res) => {
       res.status(404).send("The item doesn't exsit");
     } else {
       let postData = {
+        _id: result._id,
         title: result.title,
         content: result.content,
-        postId: id, 
         imgURL: result.imgURL,
+        postId: id, 
+        userId: result.user,
+        username: result.username
+
       }
+
       res.render("detail.ejs", {postData: postData, commentList: commentList});
     }
     
@@ -290,13 +329,8 @@ app.post("/login", userNullCheck, async (req, res, next) =>{
   })(req, res, next);
 });
 
-app.get("/mypage", (req, res)=>{
-  if( req.isAuthenticated() ) {
-    res.render("mypage.ejs", {user: req.user});
-  } else {
-    res.redirect("/login")
-  }
-
+app.get("/mypage", isLoggedin, (req, res)=>{
+  res.render("mypage.ejs", {user: req.user});
 });
 
 // Join
@@ -345,8 +379,39 @@ app.post("/comment/write", async (req, res) => {
     console.log(e);
     res.status(500).send("failed");
   }
+});
+
+// Create a chatroom
+app.get("/chat/request", (req, res) => {
+  console.log( req.params );
+  console.log( '채팅방이 생성되었습니다' );
+
+  db.collection('chatroom').insertOne({ 
+    member: [req.user._id, new ObjectId(req.query.writerId)],
+    date: new Date(),
+    // postId: new ObjectId(req.params.id)
+  });
+  res.redirect("/chat/myChatList");
 })
+
+// Chat list
+app.get('/chat/myChatList', isLoggedin, async (req, res) => {
+  let chatlist = await db.collection('chatroom').find({ 
+    member: req.user._id 
+  }).toArray();
+
+  res.render("chatlist.ejs", {chatlist: chatlist});
+});
+
+// Details of a chat
+app.get("/chat/detail/:id", isLoggedin, async (req, res)=> {
+  let chatDetail = await db.collection('chatroom').find({
+    _id: new ObjectId(req.params.id)
+  }).toArray();
+
+  res.render("chatDetail.ejs", {chatDetail: chatDetail});
+});
 
 
 app.use("/board", require("./routes/boardRoutes"));
-app.use("/chat", require("./routes/chatRoutes"));
+// app.use("/chat", require("./routes/chatRoutes"));
