@@ -888,44 +888,45 @@ nodemon을 매번 직접 실행하지 않고, NPM 스크립트로 설정
  - [app.patch()](#apppatch): 데이터 일부 수정
  - [app.app.delete()](#appdelete): 데이터 삭제
 <br/>
+<br/>
 
-## API들 다른 파일로 분리
+# API들 다른 파일로 분리
 코드가 너무 길어지면 유지보수와 가독성을 위해 파일을 분리하는 것이 중요함.
 
-### 파일 분리 대상
-**1. 라우트 (Routes)**
+## 파일 분리 대상
+### 1. 라우트 (Routes)
 - API 엔드포인트를 처리하는 로직.
 - 각 리소스(예: 유저, 상품, 주문 등)별로 라우트를 나눔.<br/>
 <br/>
 
-**2. 컨트롤러 (Controllers)**
+### 2. 컨트롤러 (Controllers)
 - 라우트에서 호출되는 비즈니스 로직.
 - 요청을 처리하고 응답을 반환.<br/>
 <br/>
 
-**3. 서비스 (Services)**
+### 3. 서비스 (Services)
 - 데이터베이스 쿼리나 외부 API 호출 같은 비즈니스 로직을 담당.
 - 재사용성이 높은 로직을 포함.<br/>
 <br/>
 
-**4. 모델 (Models)**
+### 4. 모델 (Models)
 - 라우터가 분리되어있다면, 라우터 안의 로직을 짤 때 DB 연결하는걸 계속 반복할 순 없으니 분리하여 갖다씀.
 - 데이터베이스와 상호작용하는 로직(예: Mongoose, Sequelize).<br/>
 <br/>
 
-**5. 미들웨어 (Middleware)**
+### 5. 미들웨어 (Middleware)
 - 인증, 권한 확인, 로깅 등 공통 작업.<br/>
 <br/>
 
-**6. 설정 (Config)**
+### 6. 설정 (Config)
 - 환경 변수, 데이터베이스 설정, 외부 API 키.<br/>
 <br/>
 
-**7. 유틸리티 (Utils/Helpers)**
+### 7. 유틸리티 (Utils/Helpers)
 - 자주 사용하는 공통 함수(예: 날짜 포맷, 문자열 처리).<br/>
 <br/>
 
-### 파일 구조
+## 파일 구조
 ```json
 project/
 │
@@ -955,8 +956,8 @@ project/
 
 ```
 
-### 분리방법
-**1. 라우트 분리**
+## 분리방법
+### 1. 라우트 분리
 ```js
 // (../routes/shopRoutes.js)
 
@@ -994,13 +995,13 @@ module.exports = router;
 app.use('/users', require('./routes/userRoutes'));
 ```
 
-**2. 컨트롤러 (Controllers)**
+### 2. 컨트롤러 (Controllers)
 <br/>
 
-**3. 서비스 (Services)**
+### 3. 서비스 (Services)
 <br/>
 
-**4. 모델 (Models)**
+### 4. 모델 (Models)
 ```js
 // (database.js)
 
@@ -1016,7 +1017,7 @@ module.exports = connectDB;
 ```js
 // (server.js)
 
-// 1. dataase.js 불러오기
+// 1. database.js 불러오기
 let connectDB = require('./database.js');
 
 // 2. MongoClient().connect() 이걸 connectDB로 변경
@@ -1035,7 +1036,7 @@ connectDB.then((client)=>{
 ```js
 // (../routes/shopRoutes.js)
 
-// 1. dataase.js 불러오기
+// 1. database.js 불러오기
 let connectDB = require('./../database.js');
 
 let db
@@ -1055,13 +1056,13 @@ router.get('/', async (req, res) => {
 ```
 <br/>
 
-**5. 미들웨어 (Middleware)**
+###  5. 미들웨어 (Middleware)
 <br/>
 
-**6. 설정 (Config)**
+### 6. 설정 (Config)
 <br/>
 
-**7. 유틸리티 (Utils/Helpers)**
+### 7. 유틸리티 (Utils/Helpers)
 
 <br/>
 <br/>
@@ -1411,7 +1412,7 @@ passport.use(new LocalStrategy(async (입력한아이디, 입력한비번, cb) =
   }
 
   // bcrypt.compare()를 이용하여 입력한비번과 db의 비번을 비교
-  if ( await bcrypt.compare(입력한비번, result.passowrd)) {
+  if ( await bcrypt.compare(입력한비번, result.password)) {
     return cb(null, result); // 로그인 성공
   } else {
     return cb(null, false, { message: '비번불일치' });
@@ -1969,13 +1970,142 @@ app.use(express.json());    // 유저가 보낸 array/object 데이터를 출력
 var cors = require('cors'); // cors는 다른 도메인주소끼리 ajax 요청 주고받을 때 필요
 app.use(cors());
 ```
+<br/>
+<br/>
 
-# 채팅방
+# 서버와 클라이언트가 통신하는 법
+## HTTP 요청
+- **비유**: 편지
+- **특징**
+  - 클라이언트가 서버에 요청을 보낼 때 사용하는 방식 중 하나나
+  - GET, POST와 같은 요청은 편지를 쓰듯 주소를 적고 내 정보(헤더 및 본문)를 기재해 전달해야 하는 번거로운 작업이 필요함.
+- **장점**:
+  - 구조가 간단하고 사용이 쉬움.
+- **단점**:
+  - 수동적 방식으로, 클라이언트가 요청을 해야 서버가 응답을 보냄.
 
-1. HTTP 요청
+## Server Sent Event (SSE)
+- **비유**: 라디오
+- **특징**:
+  - 클라이언트가 서버에 연결을 한 번만 열어두면, 서버가 필요한 시점에 데이터를 클라이언트로 전송할 수 있음.
+- **장점**:
+  - 실시간 데이터 전달에 적합하며 가볍고 효율적임.
+- **단점**:
+  - 단방향 통신(서버 → 클라이언트)만 가능
 
-2. Server Sent Event
-서버에서 계속 데이터 전송이 필요할 경우
+## Websocket
+- **비유**: 전화
+- **특징**:
+  - 서버와 클라이언트 간 양방**향 통신이 가능함.
+  - 가벼우며 빠른 응답 속도로 실시간 데이터 처리에 적합(예: 채팅 기능).
+- **장점**:
+  - 유연한 양방향 데이터 전송.
+- **단점**:
+  - 초기 설정 및 구현 과정에서 작성해야 할 코드가 많아 상대적으로 복잡함.
 
-3. Websocket
-실시간 서버-유저 양방향 통신 ex. 채팅기능
+!!여기서부터 정리
+### 설치 및 기본 설정
+#### 설치
+```sh
+npm i socket.io@4
+```
+
+#### 기본 설정
+1. `server.js` 에서 websocket 설정
+    ```js
+    // (server.js);
+
+    // 1. Import modules
+    const { createServer } = require('http');
+    const { Server } = require('socket.io');
+    const server = createServer(app);
+    const io = new Server(server); 
+
+    // 2. app.listen()을 server.listen()으로 바꾸기
+    server.listen(process.env.PORT, () => {
+        console.log(`Server is running on http://localhost:${process.env.PORT}`);
+    })
+
+    // 3. 웹소켓 연결 시 특정 코드를 실행
+    io.on('connection', (socket) => {
+      console.log('websocket 연결됨');
+    })
+    ```
+
+2. 웹소켓 사용을 원하는 html(ejs) 파일에도 socket.io 라이브러리 설치
+    ```html
+    <!-- (chatDetail.ejs) -->
+
+    <script src="https://cdn.jsdelivr.net/npm/socket.io@4.7.2/client-dist/socket.io.min.js"></script>
+    <script>
+      const socket = io(); // 서버로 웹소켓을 연결
+    </script>
+    ```
+
+### 데이터 통신 코드 구현
+#### 1. 클라이언트가 데이터 전송 -> 서버에서 데이터 수신
+- 클라이언트
+```html
+<!-- (chatDetail.ejs) -->
+
+<script>
+  socket.emit('age', 20);
+</script>
+```
+
+```js
+// (server.js)
+
+socket.on('데이터 이름', (data) => {
+  console.log('유저가 보낸거', data);
+})
+```
+
+서버에서 데이터 전송 -> 클라이언트에서 수신
+```js
+// room 기능 이용하여 모든 유저한테 데이터 전송하는게 아니라 로그인된유저한테만 데이터 전송
+  io.emit('이름', 'kim');
+
+// 룸이름 생성
+socket.join('룸이름');
+```
+
+```html
+socket.on('데이터이름', (data) => {
+  console.log(data);
+})
+```
+
+유저가 특정 룸에 메세지 보내려면?
+(서버에게 룸에 메세지 전달하라고 부탁 -> 서버는 부탁받으면 룸에 뿌림)
+// 이벤트가 일어나야 메시지 보낼 수 있음 -> 버튼 누르면 서버에 부탁
+document.querySelector("버튼").addEventListener("click", () => {
+  socket.emit('message', 123); 
+
+  // room 정보도 같이 전달하기 =--> 서버에서 처리하기 위해서서
+  socket.emit('message', { msg: '안녕?', 'room': 1}); //array, object도 전송 가능
+});
+
+// server.js
+io.emit()은 모든 서버에게 데이터 전송
+io.to('room 번호').emit(); => 쓰면 특정 룸에게만 데이터 전달
+
+
+숙제
+1. 채팅방 셍세페이지 접속 시 room(chatroom objectId 사용) 만들어주기
+2. 유저가 메세지 전송하면 같은 룸에 전달
+
+
+
+
+
+## Long Polling
+- **비유**: 계속 전화를 걸어 응답을 기다리는 모습
+- **특징**:
+  - 클라이언트가 서버에 HTTP 요청을 보내고, 서버는 즉시 응답하지 않음.
+  - 새로운 데이터가 생길 때까지 대기했다가 데이터를 보내는 방식.
+- **장점**:
+  - 서버에서 실시간으로 데이터를 받을 수 있음.
+- **단점**:
+  - 서버가 응답을 즉시 처리하지 않으면 메모리 누수 및 성능 문제가 발생할 수 있음.
+  - 클라이언트의 요청을 계속 유지해야 하므로 서버 자원 소모가 크고, 대규모 트래픽 환경에서는 부하가 발생할 수 있음.

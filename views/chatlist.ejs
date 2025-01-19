@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Node.js</title>
+
+  <link href="/main.css" rel="stylesheet">
+  <link href="/list.css" rel="stylesheet">
+</head>
+
+<body class="grey-bg">
+  <%- include('nav.ejs') %>
+
+  <h4>나의 채팅방 목록 </h4>
+  <div class="white-bg">
+    <% for (let i = 0; i < chatlist.length; i++){ %>
+      <div class="list-box">
+        <h4>
+          <a href="/chat/detail/<%= chatlist[i]._id %>">
+             채팅방 <%= i %>
+         </a>
+      </h4>
+      <p><%= chatlist[i]._id %></p>
+    </div>
+  <% } %>
+</div> 
+
+  <!-- <div class="white-bg">
+    <% for(let i=0; i<chatlist.length; i++) { %>
+      <div class="list-box">
+        <h4>
+          <a href="/chat/detail/<%=chatlist._id%>"> 채팅방 <%=i%> </a>
+        </h4>
+      </div>
+    <% } %> 
+  </div> -->
+
+</body>
+</html>
