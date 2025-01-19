@@ -22,7 +22,63 @@
   <div class="chat-form">
     <input class="chat-input">
     <button class="chat-button">전송</button>
-  </div>  
+  </div>
+  <%=JSON.stringify(chatDetail)%>  
 
+  <script src="https://cdn.jsdelivr.net/npm/socket.io@4.7.2/client-dist/socket.io.min.js"></script>
+  <script>
+    const chatroomId = '<%= chatDetail._id %>';
+
+    // 1. 웹소켓 연결
+    const socket = io();
+
+    // 2. 룸 조인 요청
+    socket.emit('ask-join', {room: chatroomId, userId: '<%=chatDetail.member[0]%>'});
+
+    // 3. 메세지 전송 (클라이언트 -> 서버)
+    document.querySelector('.chat-button').addEventListener('click', (e) => {
+      socket.emit('message', {
+        msg: document.querySelector('.chat-input').value,
+        room: chatroomId
+      })
+    })
+
+    // 4. 메세지 수신 (서버 -> 클라이언트)
+    socket.on('broadcast', (data) => {
+      document.querySelector('.chat-screen').insertAdjacentHTML('beforeend',
+        `<div class="chat-box"><span> ${data} <span></div>`
+      )
+    });
+
+
+    // 예시코드
+    // // 1. 웹소켓 연결
+    // const socket = io(); 
+
+    // // 2. 클라이언트 -> 서버
+    // // 클라이언트가 'msg'라는 데이터 전송
+    // socket.emit('msg', '안녕');
+
+    // // 3. 서버 -> 클라이언트
+    // // 서버가 'name'라는 이름으로 보낸 데이터 수신
+    // socket.on('name', (data) => {
+    //   console.log('서버가 보낸거: ', data);
+    // });
+
+    // // 4. 특정 룸 조인
+    // // 특정 룸에 들어가기 위해서 'ask-join'이라는 데이터를 서버에 전송. 룸에 넣어달라고 물어봄
+    // socket.emit('ask-join', '1'); // 1번 룸에 들어가고 싶다고 요청
+
+    // // 5. 전송 버튼 눌렀을 때 특정 룸에 데이터 보내기
+    // // 다른 특별한 방법이 있는건 아니고, 데이터 전송할 때 room 번호를 같이 보내서 서버에서 처리
+    // document.querySelector('.chat-button').addEventListener('click', () => {
+    //   socket.emit('message', { msg: '반가워', room: 1});
+    // });
+
+    // // 6. 서버로 받은 메시지
+    // socket.on('broadcast', (data) => {
+    //   console.log('서버가 보낸거2: ', data);
+    // })
+  </script>
 </body>
 </html>
