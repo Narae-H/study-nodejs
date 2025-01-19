@@ -2003,7 +2003,17 @@ app.use(cors());
 - **단점**:
   - 초기 설정 및 구현 과정에서 작성해야 할 코드가 많아 상대적으로 복잡함.
 
-!!여기서부터 정리
+## Long Polling
+- **비유**: 계속 전화를 걸어 응답을 기다리는 모습
+- **특징**:
+  - 클라이언트가 서버에 HTTP 요청을 보내고, 서버는 즉시 응답하지 않음.
+  - 새로운 데이터가 생길 때까지 대기했다가 데이터를 보내는 방식.
+- **장점**:
+  - 서버에서 실시간으로 데이터를 받을 수 있음.
+- **단점**:
+  - 서버가 응답을 즉시 처리하지 않으면 메모리 누수 및 성능 문제가 발생할 수 있음.
+  - 클라이언트의 요청을 계속 유지해야 하므로 서버 자원 소모가 크고, 대규모 트래픽 환경에서는 부하가 발생할 수 있음.
+
 ### 설치 및 기본 설정
 #### 설치
 ```sh
@@ -2045,67 +2055,122 @@ npm i socket.io@4
 ### 데이터 통신 코드 구현
 #### 1. 클라이언트가 데이터 전송 -> 서버에서 데이터 수신
 - 클라이언트
-```html
-<!-- (chatDetail.ejs) -->
+  ```html
+  <!-- (chatDetail.ejs) -->
 
-<script>
-  socket.emit('age', 20);
-</script>
-```
+  <script>
+    // 클라이언트가 서버로 어떤 데이터를 웹소켓으로 전송
+    // 클라이언트가 'age'라는 데이터 전송
+    socket.emit('age', 20);
+  </script>
+  ```
 
+- 서버
+  ```js
+  // (server.js)
+
+  io.on('connection',(socket) => {
+
+    // 클라이언트에게 받은 데이터 수신
+    // 클라이언트가 'age'라는 이름으로 보낸 데이터 수신
+    socket.on('age', (data) => {
+      console.log('클라이언트가 보낸 데이터: ', data); // 클라이언트가 보낸 데이터: 20
+    })
+  }) 
+  ```
+
+#### 2. 서버에서 데이터 전송 -> 클라이언트에서 수신 (웹소켓이 연결된 모든 클라이언트) 
+- 서버
+  ```js
+  // (server.js)
+
+  // 서버가 'name'이라는 데이터 전송
+  io.emit('name', 'kim');
+  ```
+
+- 클라이언트
+  ```html
+  <!-- (chatDetail.ejs) -->
+
+  <script>
+    // 서버가 'name'라는 이름으로 보낸 데이터 수신
+    socket.on('name', (data) => {
+      console.log('서버가 보낸 데이터: ', data); // 서버가 보낸 데이터: kim
+    })
+  </script>
+  ```
+
+#### 3. 서버에서 데이터 전송 -> 클라이언트에서 수신 (특정 room에만 데이터 전달) 
+room(클라이언트가 입장할 수 있는 방) 이라는 걸 이용하여 특정 room에 있는 유저들에게만 메시지 전송.
+유저를 룸에 넣는건 서버만 가능. <br/>
+<br/>
+
+- 서버
 ```js
 // (server.js)
 
-socket.on('데이터 이름', (data) => {
-  console.log('유저가 보낸거', data);
-})
-```
+io.on('connection', (socket) => {
+  // 생략...
+  
+  // 1. 룸 조인
+  // 누군가 'ask-join'이라는 이름으로 메세지 보내면 룸에 조인시켜줌.
+  socket.on('ask-join', (data) => {
+    socket.join(data);
+  }); 
 
-서버에서 데이터 전송 -> 클라이언트에서 수신
-```js
-// room 기능 이용하여 모든 유저한테 데이터 전송하는게 아니라 로그인된유저한테만 데이터 전송
-  io.emit('이름', 'kim');
-
-// 룸이름 생성
-socket.join('룸이름');
-```
-
-```html
-socket.on('데이터이름', (data) => {
-  console.log(data);
-})
-```
-
-유저가 특정 룸에 메세지 보내려면?
-(서버에게 룸에 메세지 전달하라고 부탁 -> 서버는 부탁받으면 룸에 뿌림)
-// 이벤트가 일어나야 메시지 보낼 수 있음 -> 버튼 누르면 서버에 부탁
-document.querySelector("버튼").addEventListener("click", () => {
-  socket.emit('message', 123); 
-
-  // room 정보도 같이 전달하기 =--> 서버에서 처리하기 위해서서
-  socket.emit('message', { msg: '안녕?', 'room': 1}); //array, object도 전송 가능
+  // 2. 클라이언트 -> 서버: 데이터 수신 + 받은 데이터 발송
+  socket.on('message', (data)=> {
+    // to(): 특정 room에 데이터 전달
+    io.to( data.room ).emit( 'broadcast', data.msg );
+  })
 });
 
-// server.js
-io.emit()은 모든 서버에게 데이터 전송
-io.to('room 번호').emit(); => 쓰면 특정 룸에게만 데이터 전달
+```
+
+- 클라이언트
+```html
+<!-- chatDetail.js -->
+
+<script>
+  // 1. 특정 룸 조인
+  // 특정 룸에 들어가기 위해서 'ask-join'이라는 데이터를 서버에 전송. 룸에 넣어달라고 물어봄
+  socket.emit('ask-join', '1'); // 1번 룸에 들어가고 싶다고 요청
+
+  // 2. 클라이언트 -> 서버: 데이터 발송 (룸번호 포함)
+  // 전송 버튼 눌렀을 때, 서버로 메시지와 룸넘버 발송
+  document.querySelector('.chat-button').addEventListener('click', () => {
+    socket.emit('message', { msg: '반가워', room: 1});
+  });
+
+  // 3. 서버 -> 클라이언트: 데이터 수신
+  socket.on('broadcast', (data) => {
+    console.log('서버가 보낸 데이터: ', data); // 반가워
+  });
+ </script>
+```
+
+### 세션을 이용하여 로그인된 유저 정보 출력
+```js
+// (server.js)
+
+const sessionMiddleware = session({
+  secret: "changeit",
+  resave: true,
+  saveUninitialized: true,
+});
+app.use(sessionMiddleware);
+io.engine.use(sessionMiddleware);
+
+io.on("connection", (socket) => {
+  const session = socket.request.session;
+
+  console.log( session ); // session안에 유저 로그인 정보 있음: socket.request.session.passport.user.id
+});
+```
+- <small>[참고사이트](https://socket.io/how-to/use-with-express-session)</small>
 
 
-숙제
-1. 채팅방 셍세페이지 접속 시 room(chatroom objectId 사용) 만들어주기
-2. 유저가 메세지 전송하면 같은 룸에 전달
 
 
 
 
-
-## Long Polling
-- **비유**: 계속 전화를 걸어 응답을 기다리는 모습
-- **특징**:
-  - 클라이언트가 서버에 HTTP 요청을 보내고, 서버는 즉시 응답하지 않음.
-  - 새로운 데이터가 생길 때까지 대기했다가 데이터를 보내는 방식.
-- **장점**:
-  - 서버에서 실시간으로 데이터를 받을 수 있음.
-- **단점**:
-  - 서버가 응답을 즉시 처리하지 않으면 메모리 누수 및 성능 문제가 발생할 수 있음.
-  - 클라이언트의 요청을 계속 유지해야 하므로 서버 자원 소모가 크고, 대규모 트래픽 환경에서는 부하가 발생할 수 있음.

@@ -17,6 +17,20 @@ const multerS3 = require('multer-s3');                // Connect between Multer 
 // 1-2. Create an Express instance
 const app = express();
 
+// websocket
+const { createServer } = require('http');
+const { Server } = require('socket.io');
+const server = createServer(app);
+const io = new Server(server);
+
+const sessionMiddleware = session({
+  secret: "changeit",
+  resave: true,
+  saveUninitialized: true,
+});
+app.use(sessionMiddleware);
+io.engine.use(sessionMiddleware);
+
 // 1-3. custom middleware
 const today = (req, res, next) => {
   console.log( new Date() );
@@ -142,9 +156,12 @@ new MongoClient(process.env.DB_URL).connect().then((client)=>{
   db = client.db('forum')
   
   // Run a server
-  app.listen(process.env.PORT, () => {
+  server.listen(process.env.PORT, () => {
       console.log(`Server is running on http://localhost:${process.env.PORT}`);
   })
+  // app.listen(process.env.PORT, () => {
+  //     console.log(`Server is running on http://localhost:${process.env.PORT}`);
+  // })
 }).catch((err)=>{
   console.log(err);
 });
@@ -324,7 +341,7 @@ app.post("/login", userNullCheck, async (req, res, next) =>{
     req.login(user, (err) => {
        
       if(err) return next(err);
-      res.redirect('/'); 
+      res.redirect('/list'); 
     })
   })(req, res, next);
 });
@@ -405,13 +422,45 @@ app.get('/chat/myChatList', isLoggedin, async (req, res) => {
 
 // Details of a chat
 app.get("/chat/detail/:id", isLoggedin, async (req, res)=> {
-  let chatDetail = await db.collection('chatroom').find({
+  let chatDetail = await db.collection('chatroom').findOne({
     _id: new ObjectId(req.params.id)
-  }).toArray();
+  });
 
   res.render("chatDetail.ejs", {chatDetail: chatDetail});
 });
 
+io.on('connection', (socket) => {
+  const user = socket.request.session.passport?.user;
+
+  // // 1. 클라이언트 -> 서버
+  // // 클라이언트가 'msg'라는 이름으로 보낸 데이터 수신
+  // socket.on('msg', (data) => {
+  //   console.log('유저가 보낸거 : ', data);
+  // });
+
+  // // 2. 서버 -> 클라이언트
+  // // 서버가 'name'이라는 데이터 전송
+  // io.emit('name', 'Kim'); 
+
+  // 3. 룸 조인
+  // 누군가 'ask-join'이라는 이름으로 메세지 보내면 룸에 조인시켜줌.
+  socket.on('ask-join', (data) => {
+    if( user.id == data.userId) {
+      socket.join(data.room);
+    } else {
+      console.log('잘못된 요청입니다');
+    }
+  }); 
+
+  // 4. 클라이언트 -> 서버의 특정 룸에서만 데이터 전달
+  socket.on('message', (data) => {
+    // to(): 특정 룸에만 메시지 전달
+
+    // db에 채팅내용 저장하기
+    // 채팅내용, 날짜, 부모 document id, 작성자
+    io.to( data.room ).emit( 'broadcast', data.msg );
+  })
+})
 
 app.use("/board", require("./routes/boardRoutes"));
 // app.use("/chat", require("./routes/chatRoutes"));
