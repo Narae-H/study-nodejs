@@ -109,7 +109,7 @@ passport.deserializeUser( async (user, done) => {
 })
 
 // Set custom middleware by router
-app.use('/list', today);
+// app.use('/list', today);
 
 // 1-6. Setting for file upload
 // Set AWS S3
@@ -172,23 +172,23 @@ app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html')
 });
 
-app.get("/list", async (req, res) => {
-  let result = await db.collection('post').find().toArray();
-  res.render('list.ejs', {글목록: result, user: req.user});
-})
+// app.get("/list", async (req, res) => {
+//   let result = await db.collection('post').find().toArray();
+//   res.render('list.ejs', {글목록: result, user: req.user});
+// })
 
 // search index를 활용한 검색
-app.get("/list/search", async (req, res)=>{
-  let searchOption = [
-    {$search: {
-      index: "title_index",
-      text: { query: req.query.searchTerm, path: { wildcard: "*" }}
-    }}
-  ]
+// app.get("/list/search", async (req, res)=>{
+//   let searchOption = [
+//     {$search: {
+//       index: "title_index",
+//       text: { query: req.query.searchTerm, path: { wildcard: "*" }}
+//     }}
+//   ]
 
-  let result = await db.collection("post").aggregate(searchOption).toArray();
-  res.render("list.ejs", {글목록: result});
-});
+//   let result = await db.collection("post").aggregate(searchOption).toArray();
+//   res.render("list.ejs", {글목록: result});
+// });
 
 // 그냥검색
 // app.post("/list/search", async (req, res)=>{
@@ -197,27 +197,26 @@ app.get("/list/search", async (req, res)=>{
 // });
 
 // skip() && limit() 사용
-app.get("/list/:page", async (req, res) => {
-  console.log("222");
-  const page = req.params.page;
-  const pageSize = 5;
+// app.get("/list/:page", async (req, res) => {
+//   const page = req.params.page;
+//   const pageSize = 5;
   
-  let result = await db.collection('post').find().skip((page-1)*pageSize).limit(pageSize).toArray();
-  res.render('list.ejs', {글목록: result});
-})
+//   let result = await db.collection('post').find().skip((page-1)*pageSize).limit(pageSize).toArray();
+//   res.render('list.ejs', {글목록: result});
+// })
 
 // find(이전의 아이디) && limit() 사용
-app.get("/list/next/:page", async (req, res) => {
-  const page = req.params.page;
-  const pageSize = 5;
+// app.get("/list/next/:page", async (req, res) => {
+//   const page = req.params.page;
+//   const pageSize = 5;
 
-  let result = await db.collection('post').find().skip((page-1)*pageSize).limit(pageSize).toArray();
-  res.render('list.ejs', {글목록: result});
-})
+//   let result = await db.collection('post').find().skip((page-1)*pageSize).limit(pageSize).toArray();
+//   res.render('list.ejs', {글목록: result});
+// })
 
-app.get("/write", isLoggedin, (req, res) => {
-  res.render('write.ejs', {user: req.user});
-})
+// app.get("/write", isLoggedin, (req, res) => {
+//   res.render('write.ejs', {user: req.user});
+// })
 
 // Insert data
 app.post("/add", upload.single("img1"), async (req, res) => {
@@ -398,49 +397,49 @@ app.post("/comment/write", async (req, res) => {
   }
 });
 
-// Create a chatroom
-app.get("/chat/request", (req, res) => {
-  console.log( req.params );
-  console.log( '채팅방이 생성되었습니다' );
+// // Create a chatroom
+// app.get("/chat/request", (req, res) => {
+//   console.log( req.params );
+//   console.log( '채팅방이 생성되었습니다' );
 
-  db.collection('chatroom').insertOne({ 
-    member: [req.user._id, new ObjectId(req.query.writerId)],
-    date: new Date(),
-    // postId: new ObjectId(req.params.id)
-  });
-  res.redirect("/chat/myChatList");
-})
+//   db.collection('chatroom').insertOne({ 
+//     member: [req.user._id, new ObjectId(req.query.writerId)],
+//     date: new Date(),
+//     // postId: new ObjectId(req.params.id)
+//   });
+//   res.redirect("/chat/myChatList");
+// })
 
-// Chat list
-app.get('/chat/myChatList', isLoggedin, async (req, res) => {
-  let chatlist = await db.collection('chatroom').find({ 
-    member: req.user._id 
-  }).toArray();
+// // Chat list
+// app.get('/chat/myChatList', isLoggedin, async (req, res) => {
+//   let chatlist = await db.collection('chatroom').find({ 
+//     member: req.user._id 
+//   }).toArray();
 
-  res.render("chatlist.ejs", {chatlist: chatlist});
-});
+//   res.render("chatlist.ejs", {chatlist: chatlist});
+// });
 
-// Details of a chat
-app.get("/chat/detail/:id", isLoggedin, async (req, res)=> {
-  let chatDetail = await db.collection('chatroom').findOne({
-    _id: new ObjectId(req.params.id)
-  });
+// // Details of a chat
+// app.get("/chat/detail/:id", isLoggedin, async (req, res)=> {
+//   let chatDetail = await db.collection('chatroom').findOne({
+//     _id: new ObjectId(req.params.id)
+//   });
 
-  res.render("chatDetail.ejs", {chatDetail: chatDetail});
-});
+//   res.render("chatDetail.ejs", {chatDetail: chatDetail});
+// });
 
 io.on('connection', (socket) => {
   const user = socket.request.session.passport?.user;
 
-  // // 1. 클라이언트 -> 서버
-  // // 클라이언트가 'msg'라는 이름으로 보낸 데이터 수신
-  // socket.on('msg', (data) => {
-  //   console.log('유저가 보낸거 : ', data);
-  // });
+  // 1. 클라이언트 -> 서버
+  // 클라이언트가 'msg'라는 이름으로 보낸 데이터 수신
+  socket.on('msg', (data) => {
+    console.log('유저가 보낸거 : ', data);
+  });
 
-  // // 2. 서버 -> 클라이언트
-  // // 서버가 'name'이라는 데이터 전송
-  // io.emit('name', 'Kim'); 
+  // 2. 서버 -> 클라이언트
+  // 서버가 'name'이라는 데이터 전송
+  io.emit('name', 'Kim'); 
 
   // 3. 룸 조인
   // 누군가 'ask-join'이라는 이름으로 메세지 보내면 룸에 조인시켜줌.
@@ -462,5 +461,7 @@ io.on('connection', (socket) => {
   })
 })
 
-app.use("/board", require("./routes/boardRoutes"));
-// app.use("/chat", require("./routes/chatRoutes"));
+// app.use("/board", require("./routes/boardRoutes"));
+
+app.use("/posts", require("./routes/postsRoutes"));
+app.use("/chat", require("./routes/chatRoutes"));
