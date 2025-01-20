@@ -12,7 +12,7 @@
 <body class="grey-bg">
   <%- include('nav.ejs') %>
 
-  <form action="/list/search" method="GET">
+  <form action="/posts/search" method="GET">
     <input class="saerch" type="text" name="searchTerm">
     <button class="search-send" type="submit">검색</button>
   </form>
@@ -21,7 +21,7 @@
     <% for(let i=0; i<글목록.length; i++) { %>
       <div class="list-box">
         <h4>
-          <a href="/post/detail/<%= 글목록[i]._id %>"><%= 글목록[i].title %></a>
+          <a href="/posts/detail/<%= 글목록[i]._id %>"><%= 글목록[i].title %></a>
           <a href="/edit/<%= 글목록[i]._id %>">✏️</a>
           <% if( user != null && (글목록[i].user?.toString ==  user?._id.toString) ) { %>
             <span class="delete" data-id="<%= 글목록[i]._id %>" style="cursor: pointer;">🗑️</span>
@@ -30,6 +30,14 @@
         <p><%= 글목록[i].content %></p>
       </div>
     <% } %> 
+  </div>
+
+  <div class="white-bg align-right">
+    <a href="/posts/1" class="nav-btn">1</a>
+    <a href="/posts/2" class="nav-btn">2</a>
+    <a href="/posts/3" class="nav-btn">3</a>
+    <a href="/posts/4" class="nav-btn">4</a>
+    <a href="/posts/5" class="nav-btn">5</a>
   </div>
 
 <script>
