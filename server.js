@@ -219,77 +219,77 @@ app.get('/', (req, res) => {
 // })
 
 // Insert data
-app.post("/add", upload.single("img1"), async (req, res) => {
-  try {
-    if( req.body.title == '') {
-      res.send("No title!");
-    } else {
-      // 1. Insert the data into the DB
-      await db.collection('post').insertOne({
-        title: req.body.title,
-        content: req.body.content,
-        img: req.file? req.file.location : '',
-        user: req.user._id,
-        username: req.user.username // RDB와 다르게 user, username 전부 다 저장
-      });
+// app.post("/add", upload.single("img1"), async (req, res) => {
+//   try {
+//     if( req.body.title == '') {
+//       res.send("No title!");
+//     } else {
+//       // 1. Insert the data into the DB
+//       await db.collection('post').insertOne({
+//         title: req.body.title,
+//         content: req.body.content,
+//         img: req.file? req.file.location : '',
+//         user: req.user._id,
+//         username: req.user.username // RDB와 다르게 user, username 전부 다 저장
+//       });
     
-      // 2. Handing Request 
-      res.redirect('/list'); // redirect
-    }
-  } catch(e) {
-    console.log(e);
-    res.status(500).send('Server error!');
-  }
-})
+//       // 2. Handing Request 
+//       res.redirect('/list'); // redirect
+//     }
+//   } catch(e) {
+//     console.log(e);
+//     res.status(500).send('Server error!');
+//   }
+// })
 
-app.get("/post/detail/:id", async (req, res) => {
-  console.log("!!!!!!!!!!!!!11");
-  try {
-    // 1. Get URL parameter
-    let id = req.params.id;
+// app.get("/post/detail/:id", async (req, res) => {
+//   console.log("!!!!!!!!!!!!!11");
+//   try {
+//     // 1. Get URL parameter
+//     let id = req.params.id;
 
-    // 2. Find data from DB
-    let result = await db.collection('post').findOne({_id: new ObjectId(id)});
-    let commentList = await db.collection('comment').find( { postId: id }).toArray();
+//     // 2. Find data from DB
+//     let result = await db.collection('post').findOne({_id: new ObjectId(id)});
+//     let commentList = await db.collection('comment').find( { postId: id }).toArray();
     
-    // 3. Rendering
-    if( result == null) {
-      res.status(404).send("The item doesn't exsit");
-    } else {
-      let postData = {
-        _id: result._id,
-        title: result.title,
-        content: result.content,
-        imgURL: result.imgURL,
-        postId: id, 
-        userId: result.user,
-        username: result.username
+//     // 3. Rendering
+//     if( result == null) {
+//       res.status(404).send("The item doesn't exsit");
+//     } else {
+//       let postData = {
+//         _id: result._id,
+//         title: result.title,
+//         content: result.content,
+//         imgURL: result.imgURL,
+//         postId: id, 
+//         userId: result.user,
+//         username: result.username
 
-      }
+//       }
 
-      res.render("detail.ejs", {postData: postData, commentList: commentList});
-    }
+//       res.render("detail.ejs", {postData: postData, commentList: commentList});
+//     }
     
-  } catch(e) {
-    res.status(404).send('Undefined URL');
-  }
-})
+//   } catch(e) {
+//     res.status(404).send('Undefined URL');
+//   }
+// })
 
-app.get("/edit/:id", async (req, res) => {
-  // 1. Find data from DB
-  let result = await db.collection('post').findOne(
-    { _id: new ObjectId(req.params.id),
-      user: req.user? new ObjectId(req.user._id) : ""
-    }
-  );
+// app.get("/edit/:id", async (req, res) => {
+//   // 1. Find data from DB
+//   let result = await db.collection('post').findOne(
+//     { _id: new ObjectId(req.params.id),
+//       user: req.user? new ObjectId(req.user._id) : ""
+//     }
+//   );
 
-  // 2. Render
-  if( req.user && result) {
-    res.render("edit.ejs", result);
-  } else {
-    res.send("수정할 수 없는 게시물입니다");
-  }
-})
+//   // 2. Render
+//   if( req.user && result) {
+//     res.render("edit.ejs", result);
+//   } else {
+//     res.send("수정할 수 없는 게시물입니다");
+//   }
+// })
 
 // Update data
 // app.post("/edit/:id", async (res, req) => {
@@ -301,31 +301,31 @@ app.get("/edit/:id", async (req, res) => {
 // })
 
 // Update data
-app.put("/edit/:id", async (req, res) => {
-  // 1. Update
-  const post = await db.collection('post').updateOne(
-    { _id: new ObjectId(req.params.id) },
-    { $set: {
-      title: req.body.title,
-      content: req.body.content
-    } }
-  );
+// app.put("/edit/:id", async (req, res) => {
+//   // 1. Update
+//   const post = await db.collection('post').updateOne(
+//     { _id: new ObjectId(req.params.id) },
+//     { $set: {
+//       title: req.body.title,
+//       content: req.body.content
+//     } }
+//   );
   
-  // 2. Render
-  res.redirect("/list");
-})
+//   // 2. Render
+//   res.redirect("/list");
+// })
 
 // delete
-app.delete("/delete", async (req, res)=> {
+// app.delete("/delete", async (req, res)=> {
 
-  const result = await db.collection('post').deleteOne(
-    { _id: new ObjectId(req.body._id)
-      ,user: req.user? new ObjectId(req.user._id) : ""
-     }
-  )
+//   const result = await db.collection('post').deleteOne(
+//     { _id: new ObjectId(req.body._id)
+//       ,user: req.user? new ObjectId(req.user._id) : ""
+//      }
+//   )
 
-  res.send(result);
-})
+//   res.send(result);
+// })
 
 app.get("/login", (req, res) => {
   res.render("login.ejs");
@@ -340,7 +340,7 @@ app.post("/login", userNullCheck, async (req, res, next) =>{
     req.login(user, (err) => {
        
       if(err) return next(err);
-      res.redirect('/list'); 
+      res.redirect('/posts'); 
     })
   })(req, res, next);
 });

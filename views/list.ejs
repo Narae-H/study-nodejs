@@ -21,8 +21,8 @@
     <% for(let i=0; i<글목록.length; i++) { %>
       <div class="list-box">
         <h4>
-          <a href="/posts/detail/<%= 글목록[i]._id %>"><%= 글목록[i].title %></a>
-          <a href="/edit/<%= 글목록[i]._id %>">✏️</a>
+          <a href="/posts/<%= 글목록[i]._id %>"><%= 글목록[i].title %></a>
+          <a href="/posts/<%= 글목록[i]._id %>/edit">✏️</a>
           <% if( user != null && (글목록[i].user?.toString ==  user?._id.toString) ) { %>
             <span class="delete" data-id="<%= 글목록[i]._id %>" style="cursor: pointer;">🗑️</span>
           <% } %>
@@ -33,17 +33,17 @@
   </div>
 
   <div class="white-bg align-right">
-    <a href="/posts/1" class="nav-btn">1</a>
-    <a href="/posts/2" class="nav-btn">2</a>
-    <a href="/posts/3" class="nav-btn">3</a>
-    <a href="/posts/4" class="nav-btn">4</a>
-    <a href="/posts/5" class="nav-btn">5</a>
+    <a href="/posts?page=1" class="nav-btn">1</a>
+    <a href="/posts?page=2" class="nav-btn">2</a>
+    <a href="/posts?page=3" class="nav-btn">3</a>
+    <a href="/posts?page=4" class="nav-btn">4</a>
+    <a href="/posts?page=5" class="nav-btn">5</a>
   </div>
 
 <script>
   document.querySelectorAll(".delete").forEach( (item)=>{
     item.addEventListener("click", function(e) {
-      fetch("/delete", {
+      fetch("/posts", {
         method : 'DELETE',
         headers : { 'Content-Type' : 'application/json' },
         body : JSON.stringify({_id : e.target.dataset.id})
