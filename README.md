@@ -455,6 +455,7 @@ Collection에서 document를 검색하는 메소드들 [index 알아보기](#인
       // db.collection.find(쿼리(조건)).limit(반환할 document의 최대 개수);
       db.users.find().limit(5); // 처음 5개의 document만 반환
       ```
+      
 - countDocuments()
   - 용도: 조건에 맞는 document의 개수를 반환
   - 사용 예시: 

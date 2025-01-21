@@ -1,12 +1,13 @@
 // 1. Import router
 const router = require('express').Router();
-// const { ObjectId } = require('mongodb'); // DB
+const { ObjectId } = require('mongodb'); // DB
 
 // 2. Import DB
 const connectDB = require('../models/mongodb.js');
-let db
+let postCollection, commentCollection;
 connectDB.then((client)=>{
-  db = client.db('forum').collection('post');
+  postCollection = client.db('forum').collection('post');
+  commentCollection = client.db('forum').collection('comment');
 }).catch((err)=>{
   console.log(err)
 }); 
@@ -25,8 +26,54 @@ const isLoggedin = (req, res, next) => {
 // 4. Router
 // Posts list
 router.get('/', async (req, res) => {
-  let result = await db.find().toArray();
-  res.render('list.ejs', {글목록: result, user: req.user});
+  const pageSize = 5;
+  const { page } = req.query;
+  let posts;
+
+  if( page ) {
+    // 페이지네이션 방법 1.
+    // skip() && limit(): skip()은 성능 이슈가 있음. 100만 이상의 숫자를 넣으면 엄청 오래걸림.
+    posts = await postCollection.find().skip((page-1)*pageSize).limit(pageSize).toArray();
+
+    // 페이지네이션 방법 2.
+    // find(조건) && limit(): skip()을 안써서 속도는 빠르나, 이전 페이지 다음페이지만 가져올 수 있음.
+    // await postCollection.find({_id : {$gt : 방금본 마지막게시물_id}}).limit(pageSize).toArray(); 
+  } else {
+    posts = await postCollection.find().toArray();
+  }
+
+  res.render('list.ejs', {글목록: posts, user: req.user});
+});
+
+// 게시글 작성
+router.post('', async (req, res) => {
+// 나중에 이미지 업로드 되는 부분 모듈 import하고 수정해야 함.
+// router.post('', upload.single('img1'), async (req, res) => {
+  try {
+    if( req.body.title == '') {
+      res.send("No title!");
+    } else {
+      // 1. Insert the data into the DB
+      await postCollection.insertOne({
+        title: req.body.title,
+        content: req.body.content,
+        img: req.file? req.file.location : '',
+        user: req.user._id,
+        username: req.user.username // RDB와 다르게 user, username 전부 다 저장
+      });
+    
+      // 2. Handing Request 
+      res.redirect('/posts'); // redirect
+    }
+  } catch(e) {
+    console.log(e);
+    res.status(500).send('Server error!');
+  }
+});
+
+// 게시글 작성 페이지로 이동
+router.get('/write', isLoggedin, (req, res) => {
+  res.render('write.ejs', {user: req.user});
 });
 
 // search index를 활용한 검색
@@ -38,33 +85,83 @@ router.get('/search', async (req, res)=>{
     }}
   ]
 
-  let result = await db.aggregate(searchOption).toArray();
+  let result = await postCollection.aggregate(searchOption).toArray();
   res.render("list.ejs", {글목록: result, user: req.user});
 });
 
-// skip() && limit() 사용
-router.get("/:page", async (req, res) => {
-  const page = req.params.page;
-  const pageSize = 5;
+// 특정 게시물 조회
+router.get("/:id", async (req, res) => {
+  try {
+    // 1. Get URL parameter
+    const { id } = req.params;
+    console.log(id);
+
+    // 2. Find data from DB
+    let post = await postCollection.findOne({_id: new ObjectId(id)});
+    let commentList = await commentCollection.find( { postId: id }).toArray();
+    
+    // 3. Rendering
+    if( post ) {
+      let postData = {
+        _id: post._id,
+        title: post.title,
+        content: post.content,
+        imgURL: post.imgURL,
+        postId: id, 
+        userId: post.user,
+        username: post.username
+      }
+      res.render("detail.ejs", {postData: postData, commentList: commentList});
+    } else {
+      res.status(404).send("The item doesn't exsit");
+    }
+    
+  } catch(e) {
+    console.log(e);
+    res.status(404).send('Undefined URL');
+  }
+});
+
+// 수정페이지로 이동
+router.get("/:id/edit", async (req, res) => {
+  // 1. Find data from DB
+  let post = await postCollection.findOne(
+    { _id: new ObjectId(req.params.id),
+      user: req.user? new ObjectId(req.user._id) : ""
+    }
+  );
+
+  // 2. Render
+  if( req.user && post ) {
+    res.render('edit.ejs', post);
+  } else {
+    res.send("수정할 수 없는 게시물입니다");
+  }
+});
+
+// 특정 게시글 수정
+router.put('/:id', async (req, res) => {
+  // 1. Update
+  const post = await postCollection.updateOne(
+    { _id: new ObjectId(req.params.id) },
+    { $set: {
+      title: req.body.title,
+      content: req.body.content
+    } }
+  );
   
-  let result = await db.find().skip((page-1)*pageSize).limit(pageSize).toArray();
-  res.render('list.ejs', {글목록: result, user: req.user});
+  // 2. Render
+  res.redirect('/posts');
 });
 
-// find(이전의 아이디) && limit() 사용
-router.get("/next/:page", async (req, res) => {
-  const page = req.params.page;
-  const pageSize = 5;
-
-  let result = await db.find().skip((page-1)*pageSize).limit(pageSize).toArray();
-  res.render('list.ejs', {글목록: result, user: req.user});
+// 특정 게시물 삭제
+router.delete('/', async (req, res)=> {
+  const result = await postCollection.deleteOne(
+    { _id: new ObjectId(req.body._id)
+      ,user: req.user? new ObjectId(req.user._id) : ''
+     }
+  )
+  res.send(result);
 })
-
-// 게시글 작성 페이지로 이동
-router.get("/write", isLoggedin, (req, res) => {
-  console.log('1111');
-  res.render('write.ejs', {user: req.user});
-});
-
 
 module.exports = router; 
