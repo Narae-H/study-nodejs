@@ -891,183 +891,6 @@ nodemon을 매번 직접 실행하지 않고, NPM 스크립트로 설정
 <br/>
 <br/>
 
-# API들 다른 파일로 분리
-코드가 너무 길어지면 유지보수와 가독성을 위해 파일을 분리하는 것이 중요함.
-
-## 파일 분리 대상
-### 1. 라우트 (Routes)
-- API 엔드포인트를 처리하는 로직.
-- 각 리소스(예: 유저, 상품, 주문 등)별로 라우트를 나눔.<br/>
-<br/>
-
-### 2. 컨트롤러 (Controllers)
-- 라우트에서 호출되는 비즈니스 로직.
-- 요청을 처리하고 응답을 반환.<br/>
-<br/>
-
-### 3. 서비스 (Services)
-- 데이터베이스 쿼리나 외부 API 호출 같은 비즈니스 로직을 담당.
-- 재사용성이 높은 로직을 포함.<br/>
-<br/>
-
-### 4. 모델 (Models)
-- 라우터가 분리되어있다면, 라우터 안의 로직을 짤 때 DB 연결하는걸 계속 반복할 순 없으니 분리하여 갖다씀.
-- 데이터베이스와 상호작용하는 로직(예: Mongoose, Sequelize).<br/>
-<br/>
-
-### 5. 미들웨어 (Middleware)
-- 인증, 권한 확인, 로깅 등 공통 작업.<br/>
-<br/>
-
-### 6. 설정 (Config)
-- 환경 변수, 데이터베이스 설정, 외부 API 키.<br/>
-<br/>
-
-### 7. 유틸리티 (Utils/Helpers)
-- 자주 사용하는 공통 함수(예: 날짜 포맷, 문자열 처리).<br/>
-<br/>
-
-## 파일 구조
-```json
-project/
-│
-├── server.js                // 서버 초기화 코드
-├── routes/                  // 라우트 정의
-│   ├── shopRoutes.js
-│   ├── productRoutes.js
-│   └── index.js             // 라우트 통합: 여기서 router를 전부 등록하고 server.js에서는 index.js만 import
-├── controllers/             // 컨트롤러
-│   ├── userController.js
-│   └── productController.js
-├── services/                // 서비스 로직
-│   ├── userService.js
-│   └── productService.js
-├── models/                  // 데이터베이스 모델
-│   ├── userModel.js
-│   └── productModel.js
-├── middlewares/             // 공통 미들웨어
-│   ├── authMiddleware.js
-│   └── errorMiddleware.js
-├── config/                  // 설정
-│   ├── dbConfig.js
-│   └── envConfig.js
-├── utils/                   // 유틸리티 함수
-│   └── dateUtils.js
-└── package.json
-
-```
-
-## 분리방법
-### 1. 라우트 분리
-```js
-// (../routes/shopRoutes.js)
-
-// 1. Router 객체 생성
-const router = require('express').Router();
-
-
-// 2. Route의 'app'을 전부 다 'router'로 변경
-// 2-1. 사용자 목록 가져오기
-router.get('/', (req, res) => {
-  res.send('Get all users');
-});
-
-// 2-2. 사용자 생성
-router.post('/', (req, res) => {
-  res.send('Create a user');
-});
-
-// 2-3. 사용자 삭제
-router.post('/:id', (req, res) => {
-  res.send(`Delete user with ID ${req.params.id}`);
-});
-
-
-// 3. 이 라우터를 다른 파일에서 사용할 수 있도록 내보내기
-module.exports = router;
-```
-
-```js
-// (server.js)
-
-// require('./routes/userRoutes'): userRoutes 가져오기
-// app.use('/users', 라우트): 사용자 관련 라우트 등록
-// 라우트 등록할때 '/users' 라고 했므로 uerRoutes 에서는 '/users'은 생략하고 URI 작성 
-app.use('/users', require('./routes/userRoutes'));
-```
-
-### 2. 컨트롤러 (Controllers)
-<br/>
-
-### 3. 서비스 (Services)
-<br/>
-
-### 4. 모델 (Models)
-```js
-// (database.js)
-
-// 1. DB 설정
-const { MongoClient } = require('mongodb');
-const url = process.env.DB_URL;
-let connectDB = new MongoClient(url).connect();
-
-// 2. DB 연결부분 export
-module.exports = connectDB; 
-```
-
-```js
-// (server.js)
-
-// 1. database.js 불러오기
-let connectDB = require('./database.js');
-
-// 2. MongoClient().connect() 이걸 connectDB로 변경
-let db
-connectDB.then((client)=>{
-  console.log('DB연결성공')
-  db = client.db('forum')
-  app.listen(process.env.PORT, () => {
-    console.log('http://localhost:8080 에서 서버 실행중')
-  })
-}).catch((err)=>{
-  console.log(err)
-}) 
-```
-
-```js
-// (../routes/shopRoutes.js)
-
-// 1. database.js 불러오기
-let connectDB = require('./../database.js');
-
-let db
-connectDB.then((client)=>{
-  console.log('DB연결성공')
-  db = client.db('forum');
-}).catch((err)=>{
-  console.log(err)
-}); 
-
-// 2. Route의 'app'을 전부 다 'router'로 변경
-// 2-1. 사용자 목록 가져오기
-router.get('/', async (req, res) => {
-  let result = await db.collection('post').find().toArray();
-  res.render('user.ejs', {글목록: result});
-});
-```
-<br/>
-
-###  5. 미들웨어 (Middleware)
-<br/>
-
-### 6. 설정 (Config)
-<br/>
-
-### 7. 유틸리티 (Utils/Helpers)
-
-<br/>
-<br/>
-
 # 서버 요청 (HTTP Request)
 HTTP Request는 3가지 부분으로 나뉜다:
 - Start line: [HTTP Method](#http-method), [HTTP URL](#http-url), HTTP version
@@ -2169,8 +1992,254 @@ io.on("connection", (socket) => {
 });
 ```
 - <small>[참고사이트](https://socket.io/how-to/use-with-express-session)</small>
+<br/>
+<br/>
+
+# Refactoring: 코드 모듈화
+- 한 파일에 너무 많은 코드를 담기보다는 코드를 `모듈화`하고 `역할을 분리`하여 유지보수성과 확장성을 향상시킴.
+- Node.js 프로젝트의 경우, Express와 같은 프레임워크를 사용하여 라우팅, 미들웨어, 비지니스 로직등을 모듈화 할 수 있음.
+<br/>
+<br/>
+
+## 디자인 패턴 / 방법론
+각 패턴을 적절히 조합하여 코드의 가독성과 유지보수성을 높힐 수 있음. 특히 단일원칙책임(SRP), 의존성 관리, 테스트 용이성을 고려한 설계를 가능하게 만듬.
+
+### 1. 모듈화(Modularization)
+- 각각의 역할에 맞게 분리:
+  - `MVC`(**M**odel-**V**iew-**C**ontroller):
+    - Model: 데이터 관련된 로직을 처리. 데이터베이스와 상호작용
+    - View: 사용자에게 보여지는 부분을 처리. HTML 템플릿, UI 요소 등
+    - Controller: 사용자의 요청을 처리하고 Model과 View 사이의 상호작용을 관리
+  - `Routes`: 라우터 정의
+  - `Config`: 설정 파일들
+  - `Service`: [비지니스 로직](#2-서비스-레이어-패턴service-layer-pattern)
+
+### 2. 서비스 레이어 패턴(Service Layer Pattern)
+- **C**ontroller와 **M**odel 사이에 위치하는 레이어로 비지니스 로직과 데이터 처리 로직을 캡슐화
+- Service 파일에서 실제 비즈니스 로직을 처리하고, 라우터에서는 그 서비스를 호출만 하도록 하면 **단일 책임 원칙(SRP)**을 지킬 수 있음.
+- 컨트롤러에서 불필요한 로직을 줄이고, 각 서비스가 독립적으로 테스트 가능하며, 추후 기능 확장 시 유연
+
+### 3. 팩토리 패턴(Factory Pattern)
+- 팩토리 패턴은 객체 생성 로직을 캡슐화하여 코드의 중복을 줄이고, 객체를 동적으로 생성할 수 있도록 도와주는 패턴
+- 데이터베이스 연결이나 API 호출을 다룰 때, 특정한 객체를 만드는 팩토리 함수를 사용하면 좋습니다.
+
+### 4. 의존성 주입(Dependency Injection)
+- 외부에서 객체를 주입받는 방식으로 의존성을 관리하는 방법
+- 서비스나 미들웨어에서 외부 의존성을 직접 require() 하지 않고, 생성자나 팩토리 함수를 통해 주입받도록 리팩토링
+
+### 5. 싱글톤 패턴(Singleton Pattern)
+- 특정 서비스나 유틸리티 클래스가 전체 어플리케이션에서 하나의 인스턴스로만 동작
+- 하나의 파일에서 공통 함수나 미들웨어를 관리하고, 이를 여러 파일에서 `require()`로 불러와서 사용
+- 데이터베이스 연결 객체, 캐시 관리 객체 등은 싱글톤으로 관리하기 좋음.
+> <details>
+> 
+> <summary><small>자세히</small></summary>
+> 
+> 디자인 패턴 중 하나로, 프로그램 전체에서 클래스의 인스턴스를 오직 하나만 생성하고 그 인스턴스를 여러군데에서 공유하는 패턴. 
+> Node.js에서 require()는 모듈을 한번만 로드하고 그 이후에는 캐싱된 모듈을 재사용.
+> 
+> 1. 특징
+> 1) 하나의 인스턴스: 프로그램 내에서 단 하나의 인스턴스만 존재
+> 2) 글로벌 접근: 이 인스턴스에 어디서든 접근 가능하며 여러 모듈에서 동일한 객체 반환
+> 3) 자기자신을 반환: 처음에 인스턴스를 만들때만 객체를 생성하고, 그 다음부터는 항상 같은 객체를 반환
+>
+> 2. 장점
+> 1) 자원절약: 인스턴스가 하나만 생성되므로 메모리 사용량 절약
+> 2) 전역접근: 전역에서 동일한 인스턴스 접근 가능하므로 일관성 유지 가능
+>
+> 3. 단점
+> 1) 동시성/일관성 문제: 해당 인스턴스에 동시에 접근할 경우, 경쟁 조건(Race Condition) 생길 가능성 있음 ex. 동시에 접근하여 하나는 setName('Alice')을 다른 하나는 getName()를 한다고 할때 어떤걸 먼저 처리하여 데이터를 일관되게 유지할 것인가?
+> 2) 비동기 작업의 순서관리 필요: 인스턴스에 동시에 접근할 때, promise나 async/await를 사용하여 비동기 작업 로직 구현 필요. 잠금(비관적 잠금/낙관적 잠금) 활용하기
+> </details>
+
+### 6. 미들웨어 체이닝(Middleware Chaining)
+- Express와 같은 프레임워크에서는 미들웨어 체이닝을 활용하여 여러 개의 미들웨어를 순차적으로 실행
+- 공통적으로 사용하는 인증, 로깅, 에러 핸들링 미들웨어를 middlewares 폴더로 분리한 후, 라우터에서 조합하여 사용
+
+### 7. 커맨드 패턴(Command Pattern)
+
+### 8. 레포지토리 패턴(Repository Pattern)
+
+### 9. 옵저버 패턴(Observer Pattern)
+
+<br/>
+
+## 파일 분리 대상
+### 1. 라우트 (Routes)
+- API 엔드포인트를 처리하는 로직.
+- 각 리소스(예: 유저, 상품, 주문 등)별로 라우트를 나눔.<br/>
+<br/>
+
+### 2. 컨트롤러 (Controllers)
+- 라우트에서 호출되는 비즈니스 로직.
+- 요청을 처리하고 응답을 반환.<br/>
+<br/>
+
+### 3. 서비스 (Services)
+- 데이터베이스 쿼리나 외부 API 호출 같은 비즈니스 로직을 담당.
+- 재사용성이 높은 로직을 포함.<br/>
+<br/>
+
+### 4. 모델 (Models)
+- 라우터가 분리되어있다면, 라우터 안의 로직을 짤 때 DB 연결하는걸 계속 반복할 순 없으니 분리하여 갖다씀.
+- 데이터베이스와 상호작용하는 로직(예: Mongoose, Sequelize).<br/>
+<br/>
+
+### 5. 미들웨어 (Middleware)
+- 인증, 권한 확인, 로깅 등 공통 작업.<br/>
+<br/>
+
+### 6. 설정 (Config)
+- 환경 변수, 데이터베이스 설정, 외부 API 키.<br/>
+<br/>
+
+### 7. 유틸리티 (Utils/Helpers)
+- 자주 사용하는 공통 함수(예: 날짜 포맷, 문자열 처리).<br/>
+<br/>
+
+## 파일 구조
+```json
+project/
+│
+├── server.js                // 서버 초기화 코드
+├── routes/                  // 라우트 정의
+│   ├── shopRoutes.js
+│   ├── productRoutes.js
+│   └── index.js             // 라우트 통합: 여기서 router를 전부 등록하고 server.js에서는 index.js만 import
+├── controllers/             // 컨트롤러
+│   ├── userController.js
+│   └── productController.js
+├── services/                // 서비스 로직
+│   ├── userService.js
+│   └── productService.js
+├── models/                  // 데이터베이스 모델
+│   ├── userModel.js
+│   └── productModel.js
+├── views/                   // 사용자에게 보여지는 부분을 처리: HTML, UI 요소
+│   ├── posts.ejs
+│   └── login.ejs
+├── middlewares/             // 공통 미들웨어
+│   ├── authMiddleware.js
+│   └── errorMiddleware.js
+├── config/                  // 설정
+│   ├── dbConfig.js
+│   └── envConfig.js
+├── utils/                   // 유틸리티 함수
+│   └── dateUtils.js
+└── package.json
+
+```
+
+## 분리방법
+### 1. 라우트 분리
+```js
+// (../routes/shopRoutes.js)
+
+// 1. Router 객체 생성
+const router = require('express').Router();
 
 
+// 2. Route의 'app'을 전부 다 'router'로 변경
+// 2-1. 사용자 목록 가져오기
+router.get('/', (req, res) => {
+  res.send('Get all users');
+});
+
+// 2-2. 사용자 생성
+router.post('/', (req, res) => {
+  res.send('Create a user');
+});
+
+// 2-3. 사용자 삭제
+router.post('/:id', (req, res) => {
+  res.send(`Delete user with ID ${req.params.id}`);
+});
+
+
+// 3. 이 라우터를 다른 파일에서 사용할 수 있도록 내보내기
+module.exports = router;
+```
+
+```js
+// (server.js)
+
+// require('./routes/userRoutes'): userRoutes 가져오기
+// app.use('/users', 라우트): 사용자 관련 라우트 등록
+// 라우트 등록할때 '/users' 라고 했므로 uerRoutes 에서는 '/users'은 생략하고 URI 작성 
+app.use('/users', require('./routes/userRoutes'));
+```
+
+### 2. 컨트롤러 (Controllers)
+<br/>
+
+### 3. 서비스 (Services)
+<br/>
+
+### 4. 모델 (Models)
+```js
+// (database.js)
+
+// 1. DB 설정
+const { MongoClient } = require('mongodb');
+const url = process.env.DB_URL;
+let connectDB = new MongoClient(url).connect();
+
+// 2. DB 연결부분 export
+module.exports = connectDB; 
+```
+
+```js
+// (server.js)
+
+// 1. database.js 불러오기
+let connectDB = require('./database.js');
+
+// 2. MongoClient().connect() 이걸 connectDB로 변경
+let db
+connectDB.then((client)=>{
+  console.log('DB연결성공')
+  db = client.db('forum')
+  app.listen(process.env.PORT, () => {
+    console.log('http://localhost:8080 에서 서버 실행중')
+  })
+}).catch((err)=>{
+  console.log(err)
+}) 
+```
+
+```js
+// (../routes/shopRoutes.js)
+
+// 1. database.js 불러오기
+let connectDB = require('./../database.js');
+
+let db
+connectDB.then((client)=>{
+  console.log('DB연결성공')
+  db = client.db('forum');
+}).catch((err)=>{
+  console.log(err)
+}); 
+
+// 2. Route의 'app'을 전부 다 'router'로 변경
+// 2-1. 사용자 목록 가져오기
+router.get('/', async (req, res) => {
+  let result = await db.collection('post').find().toArray();
+  res.render('user.ejs', {글목록: result});
+});
+```
+<br/>
+
+###  5. 미들웨어 (Middleware)
+<br/>
+
+### 6. 설정 (Config)
+<br/>
+
+### 7. 유틸리티 (Utils/Helpers)
+
+<br/>
+<br/>
 
 
 
