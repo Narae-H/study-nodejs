@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=<>, initial-scale=1.0">
+  <title>Document</title>
+
+  <link href="/main.css" rel="stylesheet">
+  <link href="/register.css" rel="stylesheet">
+</head>
+<body>
+  <%- include('nav.ejs') %>
+  <form class="form-box" action="/users/signup" method="POST">
+    <h4>회원가입</h4>
+    <label for="usernmae">아이디</label>
+    <input type="text" id="usernmae" name="username">
+    
+    <label for="password">비번</label>
+    <input type="text" name="password">
+
+    <label for="password1">비번확인</label>
+    <input type="text" name="password1">
+    <button type="submit">회원가입</button>
+  </form> 
+</body>
+</html>

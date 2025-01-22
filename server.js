@@ -12,7 +12,6 @@ require('dotenv').config();                           // Environment variable
 const { S3Client } = require('@aws-sdk/client-s3');   // AWS JavaScript library
 const multer = require('multer');                     // Image upload middleware
 const multerS3 = require('multer-s3');                // Connect between Multer and AWS
-// const { red } = require('gulp-cli/lib/shared/ansi');
 
 // 1-2. Create an Express instance
 const app = express();
@@ -77,14 +76,14 @@ app.use(passport.session());
 
 // LocalStrategy 설정: 아이디/비번이 DB와 일치하는지 전략을 생성하는 객체
 passport.use(new LocalStrategy(async (입력한아이디, 입력한비번, cb) => {
-  let result = await db.collection('user').findOne({ username : 입력한아이디})
-  if (!result) {
+  let user = await db.collection('user').findOne({ username : 입력한아이디})
+  if ( !user ) {
     return cb(null, false, { message: '아이디 DB에 없음' })
   }
 
   // bcrypt.compare()를 이용하여 입력한비번과 db의 비번을 비교
-  if ( await bcrypt.compare(입력한비번, result.password)) {
-    return cb(null, result); // 로그인 성공
+  if ( await bcrypt.compare(입력한비번, user.password)) {
+    return cb(null, user); // 로그인 성공
   } else {
     return cb(null, false, { message: '비번불일치' });
   }
@@ -95,21 +94,17 @@ passport.serializeUser((user, done) => {
   process.nextTick(() => {
     done(null, { id: user._id, username: user.username }); 
   })
-})
+});
 
 // After succeefully loggedin, every time a user makes a request to the server
 passport.deserializeUser( async (user, done) => {
-  console.log("deserializeUser!!!");
   let result = await db.collection('user').findOne({_id : new ObjectId(user.id) })
   delete result.password; // 비밀번호는 보안상 삭제
 
   process.nextTick(() => {
     return done(null, result); // 쿠키 이상 없으면 유저 정보 반환
   })
-})
-
-// Set custom middleware by router
-// app.use('/list', today);
+});
 
 // 1-6. Setting for file upload
 // Set AWS S3
@@ -327,57 +322,57 @@ app.get('/', (req, res) => {
 //   res.send(result);
 // })
 
-app.get("/login", (req, res) => {
-  res.render("login.ejs");
-})
+// app.get("/login", (req, res) => {
+//   res.render("login.ejs");
+// })
 
-app.post("/login", userNullCheck, async (req, res, next) =>{
-  passport.authenticate('local', (error, user, info) => {
-    if(error) return res.status(500).json(error);
-    if(!user) return res.status(401).json(info.message);
+// app.post("/login", userNullCheck, async (req, res, next) =>{
+//   passport.authenticate('local', (error, user, info) => {
+//     if(error) return res.status(500).json(error);
+//     if(!user) return res.status(401).json(info.message);
     
-    //로그인
-    req.login(user, (err) => {
+//     //로그인
+//     req.login(user, (err) => {
        
-      if(err) return next(err);
-      res.redirect('/posts'); 
-    })
-  })(req, res, next);
-});
+//       if(err) return next(err);
+//       res.redirect('/posts'); 
+//     })
+//   })(req, res, next);
+// });
 
-app.get("/mypage", isLoggedin, (req, res)=>{
-  res.render("mypage.ejs", {user: req.user});
-});
+// app.get("/mypage", isLoggedin, (req, res)=>{
+//   res.render("mypage.ejs", {user: req.user});
+// });
+
+// // Join
+// app.get("/register", (req, res)=> {
+//   res.render("register.ejs");
+// }) 
 
 // Join
-app.get("/register", (req, res)=> {
-  res.render("register.ejs");
-}) 
+// app.post("/register", userNullCheck, async (req, res) => {
+//   console.log(req.body);
+//   if( !req.body.username.trim() || !req.body.password.trim() ) {
+//      return res.send("Username 또는 password를 입력해주세요");
+//   }
 
-// Join
-app.post("/register", userNullCheck, async (req, res) => {
-  console.log(req.body);
-  if( !req.body.username.trim() || !req.body.password.trim() ) {
-     return res.send("Username 또는 password를 입력해주세요");
-  }
+//   let result = await db.collection('user').findOne({ username : req.body.username});
+//   if( result ) {
+//     return res.send("중복된 유저가 있습니다. 새로운 username을 입력해주세요");
+//   }
 
-  let result = await db.collection('user').findOne({ username : req.body.username});
-  if( result ) {
-    return res.send("중복된 유저가 있습니다. 새로운 username을 입력해주세요");
-  }
+//   if( req.body.password != req.body.password1 ) {
+//     return res.send("비밀번호가 일치하지않습니다. 다시 확인해주세요");
+//   }
 
-  if( req.body.password != req.body.password1 ) {
-    return res.send("비밀번호가 일치하지않습니다. 다시 확인해주세요");
-  }
+//   let hashedPW = await bcrypt.hash(req.body.password, 10);
+//   await db.collection("user").insertOne({
+//     username: req.body.username, 
+//     password: hashedPW
+//   });
 
-  let hashedPW = await bcrypt.hash(req.body.password, 10);
-  await db.collection("user").insertOne({
-    username: req.body.username, 
-    password: hashedPW
-  });
-
-  res.redirect("/login");
-});
+//   res.redirect("/login");
+// });
 
 // 댓글 입력
 app.post("/comment/write", async (req, res) => {
@@ -465,3 +460,4 @@ io.on('connection', (socket) => {
 
 app.use("/posts", require("./routes/postsRoutes"));
 app.use("/chat", require("./routes/chatRoutes"));
+app.use("/users", require("./routes/usersRoutes"));
