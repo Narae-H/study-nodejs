@@ -1,6 +1,7 @@
 // 1. Import router
 const router = require('express').Router();
-const { ObjectId } = require('mongodb'); // DB
+const { ObjectId } = require('mongodb');    // DB
+const { isLoggedIn } = require('./../middlewares/authMiddleware.js');
 
 // 2. Import DB
 const connectDB = require('../models/mongodb.js');
@@ -14,13 +15,6 @@ connectDB.then((client)=>{
 
 
 // 3. Middleware
-const isLoggedin = (req, res, next) => {
-  if( req.isAuthenticated() ) {
-    next();
-  } else {
-    res.redirect("/login");
-  }
-}
 
 
 // 4. Router
@@ -72,7 +66,7 @@ router.post('', async (req, res) => {
 });
 
 // 게시글 작성 페이지로 이동
-router.get('/write', isLoggedin, (req, res) => {
+router.get('/write', isLoggedIn, (req, res) => {
   res.render('write.ejs', {user: req.user});
 });
 
@@ -119,6 +113,28 @@ router.get("/:id", async (req, res) => {
   } catch(e) {
     console.log(e);
     res.status(404).send('Undefined URL');
+  }
+});
+
+// 댓글 
+// 생성: POST /posts/:postId/comments
+// 조회: GET /posts/:postId/comments
+// 수정: PUT /posts/:postId/comments/:commentId
+// 삭제: DELETE /posts/:postId/comments/:commentId
+router.post("/:postId/comments", async (req, res) => {
+  try {
+    await commentCollection.insertOne({
+      postId: req.params.postId,
+      userId: req.user._id,
+      username: req.user.username,
+      comment: req.body.comment,
+      date: new Date()
+    })
+    res.redirect("back");
+
+  } catch (e) {
+    console.log(e);
+    res.status(500).send("failed");
   }
 });
 
