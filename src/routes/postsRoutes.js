@@ -1,7 +1,7 @@
 // 1. Import router
 const router = require('express').Router();
 const { ObjectId } = require('mongodb');    // DB
-const { isLoggedIn } = require('./../middlewares/authMiddleware.js');
+const { isLoggedIn } = require('../middlewares/authMiddleware.js');
 
 // 2. Import DB
 const connectDB = require('../models/mongodb.js');
@@ -36,6 +36,7 @@ router.get('/', async (req, res) => {
     posts = await postCollection.find().toArray();
   }
 
+  // res.render('list.ejs', {글목록: posts, user: req.user});
   res.render('list.ejs', {글목록: posts, user: req.user});
 });
 
