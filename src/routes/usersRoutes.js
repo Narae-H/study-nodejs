@@ -1,6 +1,7 @@
 // 1. Import router
 const router = require('express').Router();
-const passport = require('passport'); // login: authentication middleware
+// const passport = require('passport'); // login: authentication middleware
+const passport = require('./../config/possport.js');
 const bcrypt = require('bcrypt');     // password encryption
 
 const { userNullCheck } = require('./../middlewares/validationMiddleware.js');

@@ -13,18 +13,15 @@ const { S3Client } = require('@aws-sdk/client-s3');   // AWS JavaScript library
 const multer = require('multer');                     // Image upload middleware
 const multerS3 = require('multer-s3');                // Connect between Multer and AWS
 
+const { createServer } = require('http');
+const { initializeWebSocket } = require('./src/services/websoket');
+
 // 1-2. Create an Express instance
 const app = express();
+const server = createServer(app);
+const io = initializeWebSocket(server);
 
 // websocket
-// TODO
-// [ ]: websocket 부분 다른 파일로 분리하기
-// [ ]: require('http'), createServer(app) 부분을 다른파일로 분리할지 여기둘지 고민
-const { createServer } = require('http');
-const { Server } = require('socket.io');
-const server = createServer(app);
-const io = new Server(server);
-
 const sessionMiddleware = session({
   secret: "changeit",
   resave: true,
@@ -33,37 +30,13 @@ const sessionMiddleware = session({
 app.use(sessionMiddleware);
 io.engine.use(sessionMiddleware);
 
-// 1-3. custom middleware
-// const today = (req, res, next) => {
-//   console.log( new Date() );
-//   next();
-// }
-
-// const isLoggedin = (req, res, next) => {
-//   if( req.isAuthenticated() ) {
-//     next();
-//   } else {
-//     res.redirect("/login");
-//   }
-// }
-
-// const userNullCheck = (req, res, next) => {
-//   console.log( req.body );
-//   if( !req.body.username.trim() || !req.body.password.trim() ) {
-//     res.send("아이디 또는 비번은 필수값입니다");
-//   } else {
-//     next();
-//   }
-// }
-
-// 1-3. Set global middleware
+// Set static folders
 app.use(express.static(__dirname + '/public')); // Static folders
 app.use(express.json());                        // req.body
 app.use(express.urlencoded({extended:true}));   // req.body
 app.use(methodOverride('_method'));
 
-// 1-4. passport library setting
-// session settings
+// passport library
 app.use(session({
   secret: '암호화에 쓸 비번',
   resave : false,
@@ -134,7 +107,7 @@ const upload = multer({
 app.set('view engine', 'ejs'); // EJS
 
 // 2. DB connection
-let connectDB = require('./models/mongodb');
+let connectDB = require('./src/models/mongodb');
 let db
 connectDB.then((client)=>{
   console.log('Successfully DB connected');
@@ -148,61 +121,11 @@ connectDB.then((client)=>{
   console.log(err);
 });
 
-// let db
-// new MongoClient(process.env.DB_URL).connect().then((client)=>{
-//   console.log('Successfully DB connected')
-//   db = client.db('forum')
-  
-//   // Run a server
-//   server.listen(process.env.PORT, () => {
-//       console.log(`Server is running on http://localhost:${process.env.PORT}`);
-//   })
-// }).catch((err)=>{
-//   console.log(err);
-// });
-
-
 // 3. Routing
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html')
 });
 
-
-io.on('connection', (socket) => {
-  const user = socket.request.session.passport?.user;
-
-  // 1. 클라이언트 -> 서버
-  // 클라이언트가 'msg'라는 이름으로 보낸 데이터 수신
-  socket.on('msg', (data) => {
-    console.log('유저가 보낸거 : ', data);
-  });
-
-  // 2. 서버 -> 클라이언트
-  // 서버가 'name'이라는 데이터 전송
-  io.emit('name', 'Kim'); 
-
-  // 3. 룸 조인
-  // 누군가 'ask-join'이라는 이름으로 메세지 보내면 룸에 조인시켜줌.
-  socket.on('ask-join', (data) => {
-    if( user.id == data.userId) {
-      socket.join(data.room);
-    } else {
-      console.log('잘못된 요청입니다');
-    }
-  }); 
-
-  // 4. 클라이언트 -> 서버의 특정 룸에서만 데이터 전달
-  socket.on('message', (data) => {
-    // to(): 특정 룸에만 메시지 전달
-
-    // db에 채팅내용 저장하기
-    // 채팅내용, 날짜, 부모 document id, 작성자
-    io.to( data.room ).emit( 'broadcast', data.msg );
-  })
-})
-
-// app.use("/board", require("./routes/boardRoutes"));
-
-app.use("/posts", require("./routes/postsRoutes"));
-app.use("/chat", require("./routes/chatRoutes"));
-app.use("/users", require("./routes/usersRoutes"));
+app.use("/posts", require("./src/routes/postsRoutes"));
+app.use("/chat", require("./src/routes/chatRoutes"));
+app.use("/users", require("./src/routes/usersRoutes"));

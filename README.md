@@ -2098,37 +2098,57 @@ io.on("connection", (socket) => {
 <br/>
 
 ## 파일 구조
-```json
+```bash
 project/
-│
-├── server.js                // 서버 초기화 코드
-├── routes/                  // 라우트 정의
-│   ├── shopRoutes.js
-│   ├── productRoutes.js
-│   └── index.js             // 라우트 통합: 여기서 router를 전부 등록하고 server.js에서는 index.js만 import
-├── controllers/             // 컨트롤러
-│   ├── userController.js
-│   └── productController.js
-├── services/                // 서비스 로직
-│   ├── userService.js
-│   └── productService.js
-├── models/                  // 데이터베이스 모델
-│   ├── userModel.js
-│   └── productModel.js
-├── views/                   // 사용자에게 보여지는 부분을 처리: HTML, UI 요소
-│   ├── posts.ejs
-│   └── login.ejs
-├── middlewares/             // 공통 미들웨어
-│   ├── authMiddleware.js
-│   └── errorMiddleware.js
-├── config/                  // 설정
-│   ├── dbConfig.js
-│   └── envConfig.js
-├── utils/                   // 유틸리티 함수
-│   └── dateUtils.js
-└── package.json
-
+├── src/                         # 주요 소스 코드 디렉터리
+│   ├── config/                  # 환경 변수 및 설정
+│   │   ├── dbConfig.js          
+│   │   └── envConfig.js         
+│   ├── controllers/             # 라우트 컨트롤러 (Controller Layer)
+│   │   ├── userController.js    
+│   │   └── productController.js 
+│   ├── middlewares/             # 커스텀 Express 미들웨어
+│   │   ├── authMiddleware.js    
+│   │   └── errorMiddleware.js   
+│   ├── models/                  # 데이터 모델 (Data Layer)
+│   │   ├── userModel.js         
+│   │   └── productModel.js      
+│   ├── routes/                  # 라우트 정의
+│   │   ├── shopRoutes.js        
+│   │   ├── productRoutes.js     
+│   │   └── index.js             # 모든 라우트를 통합하고 내보냄
+│   ├── services/                # 비즈니스 로직 (Service Layer)
+│   │   ├── userService.js       
+│   │   └── productService.js    
+│   ├── utils/                   # 유틸리티 함수 및 클래스
+│   │   └── dateUtils.js         
+│   ├── validations/             # 요청 데이터 검증 스키마
+│   │   └── userValidation.js    
+│   ├── views/                   # 서버 렌더링을 위한 HTML 및 EJS 파일
+│   │   ├── posts.ejs            
+│   │   └── login.ejs            
+│   ├── app.js                   # Express 애플리케이션 설정
+│   └── index.js                 # 애플리케이션의 진입점(Entry Point)
+├── package.json                 # 프로젝트 메타데이터 및 의존성
+├── .gitignore                   # Git에서 제외할 파일
+├── .env                         # 환경 변수 파일
+└── README.md                    # 프로젝트 설명
 ```
+
+> <details>
+> <summary>index.js vs app.js 역할 비교</summary>
+>
+> | **역할**        | **`index.js` (감독/조율자)**                                                    | **`app.js` (실무자)**                    |
+> |----------------|--------------------------------------------------------------------------------|-----------------------------------------|
+> | **주요 역할**   | 서버 초기화 및 실행, 큰 틀의 설정 및 조율                                        | 요청/응답 처리, 미들웨어와 라우터 설정           |
+> | **초점**        | 전체적인 그림과 조율                                                           | 요청 처리 및 애플리케이션 내부 로직            |
+> | **책임**        |- 서버 포트 설정<br>- 데이터베이스 연결<br>- WebSocket 초기화<br>- Express 앱 실행 |- 미들웨어 설정<br>- 라우터 정의<br>- 에러 처리  |
+> | **실행 시점**   | 서버를 실행하는 시작점                                                         | 서버가 실행된 이후, 클라이언트 요청 처리 담당     |
+> | **비유**       | 큰 그림을 그리고 모든 팀에 **"뭐 해야 하는지 지시하는 감독"**                       | 지시에 따라 현장에서 **"실질적으로 일하는 팀원"** |
+> | **구체적인 예** | - `server.listen()`으로 서버 실행<br>- 데이터베이스와 WebSocket 초기화 명령       | - `app.use()`로 미들웨어 추가<br>- `app.get()`으로 요청 처리 라우팅|
+> | **종속 관계**  | `app.js`를 가져와 서버의 일부로 사용                                            | 독립적으로 Express 앱을 구성                    |
+> 
+> </details>
 
 ## 분리방법
 ### 1. 라우트 분리
@@ -2237,6 +2257,13 @@ router.get('/', async (req, res) => {
 <br/>
 
 ### 7. 유틸리티 (Utils/Helpers)
+
+## 참고
+### `객체` VS `{객체}`
+| <center>**내보내는 방식**</center> | <center>**받는 방식** </center> | <center>**설명**</center>                                                              |
+|----------------------------------|--------------------------------|---------------------------------------------------------------------------------------|
+| module.exports = `객체`           | const `객체` = require(파일)    | 객체 자체를 내보내고 받을 때도, 객체를 그대로 가져옴.                                         |
+| module.exports = `{객체}`         | const `{ 객체 }` = require(파일)| 객체를 속성으로 포함한 객체를 내보내고 , 받을 때는 **구조 분해 할당**을 통해 해당 속성을 꺼내어 사용|
 
 <br/>
 <br/>
