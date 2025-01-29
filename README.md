@@ -2,7 +2,7 @@
 해당 내용은 [코딩애플🍎](https://codingapple.com/) 수업을 듣고 정리한 글입니다.
 
 # Node.js란?
-웹서버를 개발하기 위한 JavaScript 라이브러리
+웹서버를 개발하기 위한 JavaScript 라이브러리로 모듈기반 시스템
 크롬 브라우저에는 구글이 개발한 V8 이라는 자바스크립트 실행엔진이 있는데 하도 성능이 좋아서 독립적인 실행파일로 출시했는데 이게 `Node.js`.
 
 ## 사용이유
@@ -93,6 +93,98 @@ node server.js
 nodemon server.js
 ```
 
+## 주요 메소드
+### require()
+- 모듈을 가져오는데 사용
+- 한 번 require()로 가져온 모듈은 캐시되므로, 동일한 모듈을 다시 require()하면 처음 로드된 모듈이 반환. [싱글톤패턴 참고](#5-싱글톤-패턴singleton-pattern)
+
+#### 사용 예시
+```js
+// 내장 모듈 로드: Node.js에서 제공하는 기본 모듈(예: fs, http, path)을 로드
+const fs = require('fs');     // File System 모듈 로드
+const http = require('http'); // HTTP 모듈 로드
+
+
+// 사용자 정의 모듈 로드
+const myModule = require('./myModule.js'); // 같은 디렉토리의 myModule.js 로드
+
+
+// node_modules의 외부 패키지 로드
+const express = require('express'); // npm install express로 설치한 패키지
+```
+
+#### 참고 사항
+- 상대 경로 사용 (`./` or `../`)
+  ```js
+  require('./example.js'); // 현재 디렉토리 기준
+  require('../utils/helper.js'); // 상위 디렉토리 기준
+  ```
+- 확장자 생략 가능: `.js`, `.json`, `.node`는 생략 가능하며, 확장자 생략하면 `.js` -> `.json` -> `.node` 순으로 파일을 찾기 때문에 유연함.
+  - 가능하면 항상 확장자를 명시적으로 작성하는게 좋음.
+  - 커스텀 파일의 경우 명확히 작성하고, node_modules에서 가져올때는 확장자 생략.
+- 모듈 내보내고(`module.exports`) 가져오는(`require`) 과정에서, `객체` VS `{객체}` 차이점
+
+  | <center>**내보내는 방식**</center> | <center>**받는 방식** </center> | <center>**설명**</center>                                                              |
+  |----------------------------------|--------------------------------|---------------------------------------------------------------------------------------|
+  | module.exports = `객체`           | const `객체` = require(파일)    | 객체 자체를 내보내고 받을 때도, 객체를 그대로 가져옴.                                         |
+  | module.exports = `{객체}`         | const `{ 객체 }` = require(파일)| 객체를 속성으로 포함한 객체를 내보내고 , 받을 때는 **구조 분해 할당**을 통해 해당 속성을 꺼내어 사용|
+
+### module.exports
+- 현재 모듈에서 외부로 내보내고 싶은 값을 지정
+
+#### 사용 예시
+```js
+// myModule.js
+module.exports = { name: 'John', age: 20 };
+
+// app.js
+const myModule = require('./myModule.js');
+console.log(myModule.name); // John
+```
+
+### process
+- Node.js 프로세스에 대한 정보를 제공하고 제어
+
+#### 사용 예시
+```js
+console.log(process.env.NODE_ENV); // 환경 변수 확인
+process.exit(1); // 프로세스 종료
+```
+
+### fs
+- 파일 시스템을 다루는 내장 모듈.
+
+#### 사용 예시
+```js
+const fs = require('fs');
+fs.readFile('./example.txt', 'utf-8', (err, data) => {
+  if (err) throw err;
+  console.log(data);
+});
+```
+
+### http
+- HTTP 서버를 생성하는 모듈
+
+#### 사용 예시
+```js
+const http = require('http');
+const server = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Hello, World!');
+});
+server.listen(3000, () => console.log('Server running on port 3000'));
+```
+
+### path
+- 파일 경로를 다루는 유용한 메소드 제공
+
+#### 사용 예시
+```js
+const path = require('path');
+const filePath = path.join(__dirname, 'example.txt');
+console.log(filePath); // 예시: /projects/my-app/example.txt
+```
 <br/>
 <br/>
 
@@ -756,7 +848,7 @@ EJS는 Express와 함께 사용 됨.
 <br/>
 <br/>
 
-# method-override
+# HTTP Methods Override
 method-override는 HTML 폼에서 `PUT, PATCH, DELETE와 같은 HTTP 메소드를 사용할 수 있도록 도와주는 미들웨어` <br/>
 HTML \<form>는 기본적으로 GET과 POST만 지원하므로, 다른 HTTP 메소드를 사용하려면 method-override를 사용해야 함
 
@@ -1119,7 +1211,7 @@ try {
 2. **로그인**
     - 유저가 로그인하면 DB에 있는거랑 일치하는지 확인하고 일치하면 세션(유저 + 유효기간) document 생성.
     - 세션 document의 _id 같은걸 가져와서 유저 쿠키에 강제 저장.
-3. **인증**: 유저가 로그인이 필요한 페이지 같은ㄴ거 방문할 때 마다 서버는 유저가 제출한 쿠키 확인. _id와 유효기간 확인하고 페이지로 이동
+3. **인증**: 유저가 로그인이 필요한 페이지를 방문할 때 마다 서버는 유저가 제출한 쿠키 확인. _id와 유효기간 확인하고 페이지로 이동
 
 ### 설치
     ```sh
@@ -1212,8 +1304,12 @@ const LocalStrategy = require('passport-local'); // 로컬 전략을 정의하�
 // 2. Set global middleware: session settings
 // session(): 언제 어떻게 세션을 만들지 정함
 //  - secret: 세션 암호화를 위한 비밀 키. 반드시 보인에 유의해야 함. 
-//  - resave: 유저가 요청할 때 마다 session을 다시 저장할지 여부 (false 추천)
-//  - saveUninitialized: 로그인하지 않은 사용자의 세션도 저장할지 여부 (false 추천) 
+//  - resave: 변경사항이 없어도 매 요청마다 세션을 다시 저장할것인가? (false 추천)
+//    - true: 보안적으로 이점 없음. 오히려 DB에 불필요한 저장이 발생하여 성능 저하 가능성 있음.
+//    - false(추천설정): 세션 데이터가 변경될 때만 저장 
+//  - saveUninitialized: 로그인하지 않은 사용자가 방문했을 때도 빈 세션을 생성할 것인가? (false 추천) 
+//    - true: 서버와 DB에 불필요한 세션이 저장됨., 쿠키에 불필요한 세션 ID가 생성되면 CSRF 공격 위험 증가
+//    - false(추천설정): 로그인한 사용자만 세션을 저장
 //  - cookie: 세션 유효기간 설정. 밀리세컨드 단위. default: 2주
 app.use(session({
   secret: '암호화에 쓸 비번',
@@ -1245,7 +1341,7 @@ passport.use(new LocalStrategy(async (입력한아이디, 입력한비번, cb) =
 
 // 4. 세션 생성: 로그인 성공할 때마다
 // 유저가 로그인 성공할때 호출되며 세션에 저장할 정보를 설정
-//   - user: 인증 성고한 사용자 객체
+//   - user: 인증 성공한 사용자 객체
 //   - done: 세션에 저장할 데이터를 반환하는 콜백함수
 passport.serializeUser((user, done) => {
   process.nextTick(() => {
@@ -1979,10 +2075,10 @@ io.on('connection', (socket) => {
 
 const sessionMiddleware = session({
   secret: "changeit",
-  resave: true,
-  saveUninitialized: true,
+  resave: false,
+  saveUninitialized: false,
 });
-app.use(sessionMiddleware);
+app.use(sessionMiddleware); // sessionmiddleware는 passport보다는 먼저 실행되어야 함.
 io.engine.use(sessionMiddleware);
 
 io.on("connection", (socket) => {
@@ -1999,6 +2095,126 @@ io.on("connection", (socket) => {
 - 한 파일에 너무 많은 코드를 담기보다는 코드를 `모듈화`하고 `역할을 분리`하여 유지보수성과 확장성을 향상시킴.
 - Node.js 프로젝트의 경우, Express와 같은 프레임워크를 사용하여 라우팅, 미들웨어, 비지니스 로직등을 모듈화 할 수 있음.
 <br/>
+
+## 파일 분리 대상
+### 1. 라우트 (Routes)
+- API 엔드포인트를 처리하는 로직.
+- 각 리소스(예: 유저, 상품, 주문 등)별로 라우트를 나눔.<br/>
+<br/>
+
+### 2. 컨트롤러 (Controllers)
+- 라우트에서 호출되는 비즈니스 로직.
+- 요청을 처리하고 응답을 반환.<br/>
+<br/>
+
+### 3. 서비스 (Services)
+- 데이터베이스 쿼리나 외부 API 호출 같은 비즈니스 로직을 담당.
+- 재사용성이 높은 로직을 포함.<br/>
+<br/>
+
+### 4. 모델 (Models)
+- 라우터가 분리되어있다면, 라우터 안의 로직을 짤 때 DB 연결하는걸 계속 반복할 순 없으니 분리하여 갖다씀.
+- 데이터베이스와 상호작용하는 로직(예: Mongoose, Sequelize).<br/>
+<br/>
+
+### 5. 미들웨어 (Middleware)
+- 인증, 권한 확인, 로깅 등 공통 작업.<br/>
+<br/>
+
+### 6. 설정 (Config)
+- 환경 변수, 데이터베이스 설정, 외부 API 키.<br/>
+<br/>
+
+### 7. 유틸리티 (Utils/Helpers)
+- 자주 사용하는 공통 함수(예: 날짜 포맷, 문자열 처리).<br/>
+<br/>
+
+## 파일 구조
+📂 project <br/>
+├── 📁 src <br/>
+│&nbsp;&nbsp;&nbsp;├── 📁 [config](#config) <br/> 
+│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── 📄 dbConfig.js  <br/>
+│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── 📄 envConfig.js <br/>
+│&nbsp;&nbsp;&nbsp;├── 📁 [controllers](#controllers) <br/>
+│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── 📄 userController.js<br/>
+│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── 📄 productController.js<br/> 
+│&nbsp;&nbsp;&nbsp;├── 📁 [middlewares](#middlewares)<br/>
+│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── 📄 authMiddleware.js<br/>
+│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── 📄 errorMiddleware.js<br/>
+│&nbsp;&nbsp;&nbsp;├── 📁 [models](#models)<br/>
+│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── 📄 userModel.js<br/>
+│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── 📄 productModel.js<br/>
+│&nbsp;&nbsp;&nbsp;├── 📁 [routes](#routes)<br/>
+│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── 📄 shopRoutes.js<br/>
+│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── productRoutes.js<br/>
+│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── index.js<br/>
+│&nbsp;&nbsp;&nbsp;├── 📁 [services](#services)<br/>
+│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── 📄 userService.js<br/>
+│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── 📄 productService.js<br/>
+│&nbsp;&nbsp;&nbsp;├── 📁 [utils](#utils) <br/>
+│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── 📄 dateUtils.js<br/>
+│&nbsp;&nbsp;&nbsp;├── 📁 [validations](#validations) <br/>
+│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── 📄 userValidation.js<br/>
+│&nbsp;&nbsp;&nbsp;├── 📁 [views](#views) <br/>
+│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├── 📄 posts.ejs<br/>
+│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└── 📄 login.ejs<br/>
+│&nbsp;&nbsp;&nbsp;├── 📄 [app.js](#indexjs--appjs)  <br/>
+│&nbsp;&nbsp;&nbsp;└── 📄 [index.js](#indexjs--appjs) <br/>
+├── 📄 package.json<br/>
+├── 📄 .gitignore  <br/>
+├── 📄 .env <br/>
+└── 📄 README.md <br/>
+
+### config
+
+### controllers
+
+### middlewares
+- Express에서 `요청(req)과 응답(res) 사이`에서 실행되는 함수들을 정의하는 폴더
+- `요청을 가로채어` 인증, 로깅, 요청 데이터 변환, 파일 업로드 같은 처리를 수행
+
+#### 📌 파일 예시:
+- auth.js → JWT 또는 세션을 이용한 인증 미들웨어<br/>
+- error.js → 에러 핸들링 미들웨어<br/>
+- rateLimiter.js → 요청 제한 (express-rate-limit 등)<br/>
+
+### models
+
+### routes
+
+### services
+- 비즈니스 로직을 담당하는 모듈
+- `데이터베이스와 상호작용`하거나 `API 호출을 수행`하는 기능을 포함
+
+#### 📌 파일 예시:
+- userService.js → 사용자 CRUD 관련 비즈니스 로직
+- fileService.js → 파일 업로드, 다운로드, 삭제 관리
+- emailService.js → 이메일 발송 로직
+- paymentService.js → 결제 처리 로직 (Stripe, PayPal API 등)
+
+### utils
+- 서비스 로직과 무관한 `재사용 가능한 함수(헬퍼 함수)`를 모아놓는 폴더
+- 서비스 레이어에서 여러 번 사용될 수 있지만, `특정 서비스에 속하지 않는 경우` 여기에 둠
+
+#### 📌 파일 예시:
+- hash.js → 비밀번호 해싱/검증 관련 함수 (bcrypt 등)
+- dateFormatter.js → 날짜 포맷 변환 함수
+- logger.js → 로깅 기능 (winston, console.log 대체)
+
+### validations
+
+### views
+
+### index.js & app.js
+| **역할**        | **`index.js` (감독/조율자)**                                                    | **`app.js` (실무자)**                    |
+|----------------|--------------------------------------------------------------------------------|-----------------------------------------|
+| **주요 역할**   | 서버 초기화 및 실행, 큰 틀의 설정 및 조율                                        | 요청/응답 처리, 미들웨어와 라우터 설정           |
+| **초점**        | 전체적인 그림과 조율                                                           | 요청 처리 및 애플리케이션 내부 로직            |
+| **책임**        |- 서버 포트 설정<br>- 데이터베이스 연결<br>- WebSocket 초기화<br>- Express 앱 실행 |- 미들웨어 설정<br>- 라우터 정의<br>- 에러 처리  |
+| **실행 시점**   | 서버를 실행하는 시작점                                                         | 서버가 실행된 이후, 클라이언트 요청 처리 담당     |
+| **비유**       | 큰 그림을 그리고 모든 팀에 **"뭐 해야 하는지 지시하는 감독"**                       | 지시에 따라 현장에서 **"실질적으로 일하는 팀원"** |
+| **구체적인 예** | - `server.listen()`으로 서버 실행<br>- 데이터베이스와 WebSocket 초기화 명령       | - `app.use()`로 미들웨어 추가<br>- `app.get()`으로 요청 처리 라우팅|
+| **종속 관계**  | `app.js`를 가져와 서버의 일부로 사용                                            | 독립적으로 Express 앱을 구성                    |
 <br/>
 
 ## 디자인 패턴 / 방법론
@@ -2063,92 +2279,6 @@ io.on("connection", (socket) => {
 ### 9. 옵저버 패턴(Observer Pattern)
 
 <br/>
-
-## 파일 분리 대상
-### 1. 라우트 (Routes)
-- API 엔드포인트를 처리하는 로직.
-- 각 리소스(예: 유저, 상품, 주문 등)별로 라우트를 나눔.<br/>
-<br/>
-
-### 2. 컨트롤러 (Controllers)
-- 라우트에서 호출되는 비즈니스 로직.
-- 요청을 처리하고 응답을 반환.<br/>
-<br/>
-
-### 3. 서비스 (Services)
-- 데이터베이스 쿼리나 외부 API 호출 같은 비즈니스 로직을 담당.
-- 재사용성이 높은 로직을 포함.<br/>
-<br/>
-
-### 4. 모델 (Models)
-- 라우터가 분리되어있다면, 라우터 안의 로직을 짤 때 DB 연결하는걸 계속 반복할 순 없으니 분리하여 갖다씀.
-- 데이터베이스와 상호작용하는 로직(예: Mongoose, Sequelize).<br/>
-<br/>
-
-### 5. 미들웨어 (Middleware)
-- 인증, 권한 확인, 로깅 등 공통 작업.<br/>
-<br/>
-
-### 6. 설정 (Config)
-- 환경 변수, 데이터베이스 설정, 외부 API 키.<br/>
-<br/>
-
-### 7. 유틸리티 (Utils/Helpers)
-- 자주 사용하는 공통 함수(예: 날짜 포맷, 문자열 처리).<br/>
-<br/>
-
-## 파일 구조
-```bash
-project/
-├── src/                         # 주요 소스 코드 디렉터리
-│   ├── config/                  # 환경 변수 및 설정
-│   │   ├── dbConfig.js          
-│   │   └── envConfig.js         
-│   ├── controllers/             # 라우트 컨트롤러 (Controller Layer)
-│   │   ├── userController.js    
-│   │   └── productController.js 
-│   ├── middlewares/             # 커스텀 Express 미들웨어
-│   │   ├── authMiddleware.js    
-│   │   └── errorMiddleware.js   
-│   ├── models/                  # 데이터 모델 (Data Layer)
-│   │   ├── userModel.js         
-│   │   └── productModel.js      
-│   ├── routes/                  # 라우트 정의
-│   │   ├── shopRoutes.js        
-│   │   ├── productRoutes.js     
-│   │   └── index.js             # 모든 라우트를 통합하고 내보냄
-│   ├── services/                # 비즈니스 로직 (Service Layer)
-│   │   ├── userService.js       
-│   │   └── productService.js    
-│   ├── utils/                   # 유틸리티 함수 및 클래스
-│   │   └── dateUtils.js         
-│   ├── validations/             # 요청 데이터 검증 스키마
-│   │   └── userValidation.js    
-│   ├── views/                   # 서버 렌더링을 위한 HTML 및 EJS 파일
-│   │   ├── posts.ejs            
-│   │   └── login.ejs            
-│   ├── app.js                   # Express 애플리케이션 설정
-│   └── index.js                 # 애플리케이션의 진입점(Entry Point)
-├── package.json                 # 프로젝트 메타데이터 및 의존성
-├── .gitignore                   # Git에서 제외할 파일
-├── .env                         # 환경 변수 파일
-└── README.md                    # 프로젝트 설명
-```
-
-> <details>
-> <summary>index.js vs app.js 역할 비교</summary>
->
-> | **역할**        | **`index.js` (감독/조율자)**                                                    | **`app.js` (실무자)**                    |
-> |----------------|--------------------------------------------------------------------------------|-----------------------------------------|
-> | **주요 역할**   | 서버 초기화 및 실행, 큰 틀의 설정 및 조율                                        | 요청/응답 처리, 미들웨어와 라우터 설정           |
-> | **초점**        | 전체적인 그림과 조율                                                           | 요청 처리 및 애플리케이션 내부 로직            |
-> | **책임**        |- 서버 포트 설정<br>- 데이터베이스 연결<br>- WebSocket 초기화<br>- Express 앱 실행 |- 미들웨어 설정<br>- 라우터 정의<br>- 에러 처리  |
-> | **실행 시점**   | 서버를 실행하는 시작점                                                         | 서버가 실행된 이후, 클라이언트 요청 처리 담당     |
-> | **비유**       | 큰 그림을 그리고 모든 팀에 **"뭐 해야 하는지 지시하는 감독"**                       | 지시에 따라 현장에서 **"실질적으로 일하는 팀원"** |
-> | **구체적인 예** | - `server.listen()`으로 서버 실행<br>- 데이터베이스와 WebSocket 초기화 명령       | - `app.use()`로 미들웨어 추가<br>- `app.get()`으로 요청 처리 라우팅|
-> | **종속 관계**  | `app.js`를 가져와 서버의 일부로 사용                                            | 독립적으로 Express 앱을 구성                    |
-> 
-> </details>
 
 ## 분리방법
 ### 1. 라우트 분리
@@ -2257,13 +2387,6 @@ router.get('/', async (req, res) => {
 <br/>
 
 ### 7. 유틸리티 (Utils/Helpers)
-
-## 참고
-### `객체` VS `{객체}`
-| <center>**내보내는 방식**</center> | <center>**받는 방식** </center> | <center>**설명**</center>                                                              |
-|----------------------------------|--------------------------------|---------------------------------------------------------------------------------------|
-| module.exports = `객체`           | const `객체` = require(파일)    | 객체 자체를 내보내고 받을 때도, 객체를 그대로 가져옴.                                         |
-| module.exports = `{객체}`         | const `{ 객체 }` = require(파일)| 객체를 속성으로 포함한 객체를 내보내고 , 받을 때는 **구조 분해 할당**을 통해 해당 속성을 꺼내어 사용|
 
 <br/>
 <br/>

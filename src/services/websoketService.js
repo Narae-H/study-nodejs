@@ -1,5 +1,6 @@
-// 1. Import modules
 const { Server } = require('socket.io');
+const logger = require('../config/logger.js');
+
 let io; 
 
 const initializeWebSocket = (server) => {
@@ -10,7 +11,7 @@ const initializeWebSocket = (server) => {
   
     // 클라이언트 -> 서버: 클라이언트가 'msg'라는 이름으로 보낸 데이터 수신
     socket.on('msg', (data) => {
-      console.log('유저가 보낸거 : ', data);
+      logger.info('유저가 보낸거 : ', data);
     });
   
     // 서버 -> 클라이언트: 서버가 'name'이라는 데이터 전송
@@ -21,7 +22,7 @@ const initializeWebSocket = (server) => {
       if( user.id == data.userId) {
         socket.join(data.room);
       } else {
-        console.log('잘못된 요청입니다');
+        logger.error('잘못된 요청입니다');
       }
     }); 
   
