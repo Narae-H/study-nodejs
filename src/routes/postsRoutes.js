@@ -2,6 +2,7 @@
 const router = require('express').Router();
 const { ObjectId } = require('mongodb');    // DB
 const { isLoggedIn } = require('../middlewares/authMiddleware.js');
+const logger = require('./../config/logger.js');
 
 // 2. Import DB
 const connectDB = require('../models/mongodb.js');
@@ -10,14 +11,10 @@ connectDB.then((client)=>{
   postCollection = client.db('forum').collection('post');
   commentCollection = client.db('forum').collection('comment');
 }).catch((err)=>{
-  console.log(err)
+  logger.error(err);
 }); 
 
-
-// 3. Middleware
-
-
-// 4. Router
+// 3. Router
 // Posts list
 router.get('/', async (req, res) => {
   const pageSize = 5;
@@ -46,7 +43,7 @@ router.post('', async (req, res) => {
 // router.post('', upload.single('img1'), async (req, res) => {
   try {
     if( req.body.title == '') {
-      res.send("No title!");
+      res.send('No title!');
     } else {
       // 1. Insert the data into the DB
       await postCollection.insertOne({
@@ -61,7 +58,7 @@ router.post('', async (req, res) => {
       res.redirect('/posts'); // redirect
     }
   } catch(e) {
-    console.log(e);
+    logger.error(e);
     res.status(500).send('Server error!');
   }
 });
@@ -81,15 +78,14 @@ router.get('/search', async (req, res)=>{
   ]
 
   let result = await postCollection.aggregate(searchOption).toArray();
-  res.render("list.ejs", {글목록: result, user: req.user});
+  res.render('list.ejs', {글목록: result, user: req.user});
 });
 
 // 특정 게시물 조회
-router.get("/:id", async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     // 1. Get URL parameter
     const { id } = req.params;
-    console.log(id);
 
     // 2. Find data from DB
     let post = await postCollection.findOne({_id: new ObjectId(id)});
@@ -112,7 +108,7 @@ router.get("/:id", async (req, res) => {
     }
     
   } catch(e) {
-    console.log(e);
+    logger.error(e);
     res.status(404).send('Undefined URL');
   }
 });
@@ -122,7 +118,7 @@ router.get("/:id", async (req, res) => {
 // 조회: GET /posts/:postId/comments
 // 수정: PUT /posts/:postId/comments/:commentId
 // 삭제: DELETE /posts/:postId/comments/:commentId
-router.post("/:postId/comments", async (req, res) => {
+router.post('/:postId/comments', async (req, res) => {
   try {
     await commentCollection.insertOne({
       postId: req.params.postId,
@@ -134,17 +130,17 @@ router.post("/:postId/comments", async (req, res) => {
     res.redirect("back");
 
   } catch (e) {
-    console.log(e);
+    logger.error(e);
     res.status(500).send("failed");
   }
 });
 
 // 수정페이지로 이동
-router.get("/:id/edit", async (req, res) => {
+router.get('/:id/edit', async (req, res) => {
   // 1. Find data from DB
   let post = await postCollection.findOne(
     { _id: new ObjectId(req.params.id),
-      user: req.user? new ObjectId(req.user._id) : ""
+      user: req.user? new ObjectId(req.user._id) : ''
     }
   );
 
@@ -152,7 +148,7 @@ router.get("/:id/edit", async (req, res) => {
   if( req.user && post ) {
     res.render('edit.ejs', post);
   } else {
-    res.send("수정할 수 없는 게시물입니다");
+    res.send('수정할 수 없는 게시물입니다');
   }
 });
 

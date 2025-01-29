@@ -12,11 +12,11 @@
  */
 
 const { createServer } = require('http');
-const logger = require('./config/logger');
-const config = require('./config/config');
-const app = require('./app');
-const { initializeWebSocket } = require('./services/websoket'); 
-const sessionMiddleware = require('./middlewares/sessionMiddleware');
+const logger = require('./config/logger.js');
+const config = require('./config/config.js');
+const app = require('./app.js');
+const { initializeWebSocket } = require('./services/websoketService.js'); 
+const sessionMiddleware = require('./middlewares/sessionMiddleware.js');
 
 // HTTP 서버 생성
 let server= createServer(app);
@@ -34,9 +34,8 @@ connectDB.then((client)=>{
   
   // Run a server
   server.listen(config.port, () => {
-      console.log(`Server is running on http://localhost:${config.port}`); 
+    logger.info(`Server is running on http://localhost:${config.port}`); 
   })
 }).catch((err)=>{
-  // [ ] console.log로 되어있는 것들 logger()로 바꿔야 함.
-  console.log(err);
+  logger.error(err);
 });
