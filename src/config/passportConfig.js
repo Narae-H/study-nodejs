@@ -18,7 +18,7 @@ const logger = require('./logger.js');
 
 // DB
 const connectDB = require('../models/mongodb.js');
-let userCollection;
+let userCollection; 
 connectDB.then((client)=>{
   userCollection = client.db('forum').collection('user');
 }).catch((err)=>{
