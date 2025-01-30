@@ -11,25 +11,26 @@
  *  - 에러 핸들러 설정
  */
 
-const express = require('express');                   // express library
+const express = require('express');                  
 const path = require('path');
-const methodOverride = require('method-override');    // HTTP methods
-const app = express();
+const methodOverride = require('method-override');
 const passport = require('./config/passportConfig');
 const sessionMiddleware = require('./middlewares/sessionMiddleware');
 
-// Login
+const app = express();
+
+// HTTP requets
+app.use(express.json());                        // req.body
+app.use(express.urlencoded({extended:true}));   // req.body
+app.use(methodOverride('_method'));             // HTTP methods 
+
+// Login (session, authentication)
 app.use(sessionMiddleware);     // initialize session 
 app.use(passport.initialize()); // initialize passport
 app.use(passport.session());    // use the session in the passport
 
 // Static folders
 app.use(express.static(__dirname + '/public'));
-
-// HTTP requets
-app.use(express.json());                        // req.body
-app.use(express.urlencoded({extended:true}));   // req.body
-app.use(methodOverride('_method'));             // HTTP methods 
 
 // Template engine
 app.set('view engine', 'ejs'); // EJS

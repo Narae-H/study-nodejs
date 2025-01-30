@@ -1,3 +1,14 @@
+/**
+ * envConfig.js: 환경변수 로드 및 검증
+ * 역할:
+ *  - 환경변수 불러오기
+ *  - 환경변수 유효성 검사
+ *  - 유효한 환경변수를 객체 형태로 변환 및 내보내기
+ * 책임범위:
+ *  - 환경 변수 관리
+ *  - 환경 변수 유효성 검사 
+ */
+
 const dotenv = require('dotenv');
 const path = require('path');
 const Joi = require('joi'); // 유효성 검사
@@ -34,4 +45,4 @@ module.exports = {
     key: envVars.S3_KEY,
     secret: envVars.S3_SECRET,
   }
-}
+};
